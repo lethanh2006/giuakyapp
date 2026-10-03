@@ -1,0 +1,1192 @@
+{
+  "benchmark": "cross_service_existing_mongo_read_indexes",
+  "mongodbVersion": "8.0.32",
+  "generatedAtUtc": "2026-09-24T04:58:06.206Z",
+  "datasetDocumentsPerCase": 30000,
+  "samplesPerPlan": 20,
+  "virtualUsers": 4,
+  "queriesPerUser": 5,
+  "warmupsPerUserPerPlan": 2,
+  "indexCases": 22,
+  "averaging": "unweighted arithmetic average across query cases; not traffic-weighted",
+  "average": {
+    "noIndexMedianMs": 292.188,
+    "indexedMedianMs": 35.504,
+    "reductionOfAverageMedianPercent": 87.8,
+    "averagePerCaseMedianReductionPercent": 84.9,
+    "averagePerCaseMedianSpeedup": 28.23,
+    "averageDocsExaminedReductionPercent": 99.36,
+    "casesFasterWithIndex": 22
+  },
+  "cases": [
+    {
+      "name": "auth.credentials.login_email",
+      "index": {
+        "email": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 1,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "LIMIT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 1,
+        "docsExamined": 1,
+        "keysExamined": 1,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "email_unique"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 336.063,
+        "medianMs": 317.481,
+        "p95Ms": 501.848,
+        "operationsPerSecond": 3,
+        "elapsedMs": 1991.8,
+        "throughputQueriesPerSecond": 10
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 43.66,
+        "medianMs": 19.382,
+        "p95Ms": 91.097,
+        "operationsPerSecond": 22.9,
+        "elapsedMs": 299.4,
+        "throughputQueriesPerSecond": 66.8
+      },
+      "medianLatencyReductionPercent": 93.9,
+      "medianSpeedup": 16.38
+    },
+    {
+      "name": "auth.outbox.pending_publish",
+      "index": {
+        "publishedAt": 1,
+        "nextAttemptAt": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 1,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 1,
+        "docsExamined": 1000,
+        "keysExamined": 1000,
+        "stages": [
+          "SORT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "publishedAt_nextAttemptAt"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 358.712,
+        "medianMs": 304.535,
+        "p95Ms": 595.214,
+        "operationsPerSecond": 2.8,
+        "elapsedMs": 1908.4,
+        "throughputQueriesPerSecond": 10.5
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 52.015,
+        "medianMs": 71.286,
+        "p95Ms": 93.245,
+        "operationsPerSecond": 19.2,
+        "elapsedMs": 283,
+        "throughputQueriesPerSecond": 70.7
+      },
+      "medianLatencyReductionPercent": 76.6,
+      "medianSpeedup": 4.27
+    },
+    {
+      "name": "chat.user_conversations",
+      "index": {
+        "users": 1,
+        "updatedAt": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "users_updatedAt"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 402.593,
+        "medianMs": 419.668,
+        "p95Ms": 602.035,
+        "operationsPerSecond": 2.5,
+        "elapsedMs": 2225,
+        "throughputQueriesPerSecond": 9
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 62.829,
+        "medianMs": 90.428,
+        "p95Ms": 111.317,
+        "operationsPerSecond": 15.9,
+        "elapsedMs": 323.9,
+        "throughputQueriesPerSecond": 61.8
+      },
+      "medianLatencyReductionPercent": 78.5,
+      "medianSpeedup": 4.64
+    },
+    {
+      "name": "chat.message_history",
+      "index": {
+        "chatId": 1,
+        "createdAt": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 50,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 50,
+        "docsExamined": 50,
+        "keysExamined": 50,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "chatId_createdAt"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 383.336,
+        "medianMs": 301.126,
+        "p95Ms": 788.513,
+        "operationsPerSecond": 2.6,
+        "elapsedMs": 2289.7,
+        "throughputQueriesPerSecond": 8.7
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 47.461,
+        "medianMs": 13.219,
+        "p95Ms": 97.899,
+        "operationsPerSecond": 21.1,
+        "elapsedMs": 306.6,
+        "throughputQueriesPerSecond": 65.2
+      },
+      "medianLatencyReductionPercent": 95.6,
+      "medianSpeedup": 22.78
+    },
+    {
+      "name": "chat.unread_count",
+      "index": {
+        "chatId": 1,
+        "seen": 1,
+        "sender": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 1,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "GROUP",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 1,
+        "docsExamined": 0,
+        "keysExamined": 22,
+        "stages": [
+          "GROUP",
+          "PROJECTION_COVERED",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "chatId_seen_sender"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 274.235,
+        "medianMs": 290.925,
+        "p95Ms": 397.406,
+        "operationsPerSecond": 3.6,
+        "elapsedMs": 1499,
+        "throughputQueriesPerSecond": 13.3
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 21.641,
+        "medianMs": 6.946,
+        "p95Ms": 83.374,
+        "operationsPerSecond": 46.2,
+        "elapsedMs": 114.6,
+        "throughputQueriesPerSecond": 174.5
+      },
+      "medianLatencyReductionPercent": 97.6,
+      "medianSpeedup": 41.88
+    },
+    {
+      "name": "todo.assigned_tasks",
+      "index": {
+        "assignedTo": 1,
+        "createdAt": -1,
+        "_id": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "assignedTo_createdAt_id"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 389.653,
+        "medianMs": 333.154,
+        "p95Ms": 700.798,
+        "operationsPerSecond": 2.6,
+        "elapsedMs": 2016.7,
+        "throughputQueriesPerSecond": 9.9
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 49.711,
+        "medianMs": 69.436,
+        "p95Ms": 97.313,
+        "operationsPerSecond": 20.1,
+        "elapsedMs": 274.9,
+        "throughputQueriesPerSecond": 72.8
+      },
+      "medianLatencyReductionPercent": 79.2,
+      "medianSpeedup": 4.8
+    },
+    {
+      "name": "todo.created_tasks",
+      "index": {
+        "createdBy": 1,
+        "createdAt": -1,
+        "_id": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "createdBy_createdAt_id"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 335.612,
+        "medianMs": 305.459,
+        "p95Ms": 593.519,
+        "operationsPerSecond": 3,
+        "elapsedMs": 1815.4,
+        "throughputQueriesPerSecond": 11
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 35.645,
+        "medianMs": 12.195,
+        "p95Ms": 90.859,
+        "operationsPerSecond": 28.1,
+        "elapsedMs": 206.2,
+        "throughputQueriesPerSecond": 97
+      },
+      "medianLatencyReductionPercent": 96,
+      "medianSpeedup": 25.05
+    },
+    {
+      "name": "workschedule.requests.mine_by_week",
+      "index": {
+        "employee_id": 1,
+        "week_start": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "employee_week_start"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 309.094,
+        "medianMs": 300.891,
+        "p95Ms": 488.108,
+        "operationsPerSecond": 3.2,
+        "elapsedMs": 1601,
+        "throughputQueriesPerSecond": 12.5
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 73.777,
+        "medianMs": 78.723,
+        "p95Ms": 201.291,
+        "operationsPerSecond": 13.6,
+        "elapsedMs": 475.6,
+        "throughputQueriesPerSecond": 42
+      },
+      "medianLatencyReductionPercent": 73.8,
+      "medianSpeedup": 3.82
+    },
+    {
+      "name": "workschedule.requests.pending",
+      "index": {
+        "status": 1,
+        "submitted_at": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "status_submitted_at"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 288.763,
+        "medianMs": 213.542,
+        "p95Ms": 482.431,
+        "operationsPerSecond": 3.5,
+        "elapsedMs": 1585,
+        "throughputQueriesPerSecond": 12.6
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 37.384,
+        "medianMs": 6.319,
+        "p95Ms": 92.89,
+        "operationsPerSecond": 26.7,
+        "elapsedMs": 191.5,
+        "throughputQueriesPerSecond": 104.4
+      },
+      "medianLatencyReductionPercent": 97,
+      "medianSpeedup": 33.79
+    },
+    {
+      "name": "workschedule.monthly_request_unique_lookup",
+      "index": {
+        "employee_id": 1,
+        "month": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 1,
+        "docsExamined": 5543,
+        "keysExamined": 0,
+        "stages": [
+          "LIMIT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 1,
+        "docsExamined": 516,
+        "keysExamined": 516,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "employee_month_partial_unique"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 81.214,
+        "medianMs": 70.982,
+        "p95Ms": 208.424,
+        "operationsPerSecond": 12.3,
+        "elapsedMs": 479,
+        "throughputQueriesPerSecond": 41.8
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 72.272,
+        "medianMs": 60.783,
+        "p95Ms": 183.801,
+        "operationsPerSecond": 13.8,
+        "elapsedMs": 558.2,
+        "throughputQueriesPerSecond": 35.8
+      },
+      "medianLatencyReductionPercent": 14.4,
+      "medianSpeedup": 1.17
+    },
+    {
+      "name": "workschedule.work_requests.mine",
+      "index": {
+        "employee_id": 1,
+        "createdAt": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "employee_createdAt"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 289.076,
+        "medianMs": 298.333,
+        "p95Ms": 396.542,
+        "operationsPerSecond": 3.5,
+        "elapsedMs": 1497.1,
+        "throughputQueriesPerSecond": 13.4
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 25.271,
+        "medianMs": 6.347,
+        "p95Ms": 86.948,
+        "operationsPerSecond": 39.6,
+        "elapsedMs": 193.3,
+        "throughputQueriesPerSecond": 103.5
+      },
+      "medianLatencyReductionPercent": 97.9,
+      "medianSpeedup": 47
+    },
+    {
+      "name": "workschedule.work_requests.duplicate_check",
+      "index": {
+        "employee_id": 1,
+        "start_at": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 1,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "LIMIT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 1,
+        "docsExamined": 2,
+        "keysExamined": 2,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "employee_start_at"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 284.925,
+        "medianMs": 302.054,
+        "p95Ms": 415.261,
+        "operationsPerSecond": 3.5,
+        "elapsedMs": 1612.2,
+        "throughputQueriesPerSecond": 12.4
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 16.387,
+        "medianMs": 4.82,
+        "p95Ms": 65.014,
+        "operationsPerSecond": 61,
+        "elapsedMs": 86.4,
+        "throughputQueriesPerSecond": 231.5
+      },
+      "medianLatencyReductionPercent": 98.4,
+      "medianSpeedup": 62.67
+    },
+    {
+      "name": "workschedule.work_requests.by_status",
+      "index": {
+        "status": 1,
+        "createdAt": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "status_createdAt"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 301.277,
+        "medianMs": 299.468,
+        "p95Ms": 403.231,
+        "operationsPerSecond": 3.3,
+        "elapsedMs": 1602.1,
+        "throughputQueriesPerSecond": 12.5
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 58.431,
+        "medianMs": 81.036,
+        "p95Ms": 99.552,
+        "operationsPerSecond": 17.1,
+        "elapsedMs": 294.1,
+        "throughputQueriesPerSecond": 68
+      },
+      "medianLatencyReductionPercent": 72.9,
+      "medianSpeedup": 3.7
+    },
+    {
+      "name": "workschedule.entries.by_request",
+      "index": {
+        "request_id": 1,
+        "date": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 10,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 10,
+        "docsExamined": 10,
+        "keysExamined": 10,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "request_date_unique"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 256.721,
+        "medianMs": 191.048,
+        "p95Ms": 480.382,
+        "operationsPerSecond": 3.9,
+        "elapsedMs": 1584,
+        "throughputQueriesPerSecond": 12.6
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 48.895,
+        "medianMs": 17.509,
+        "p95Ms": 108.301,
+        "operationsPerSecond": 20.5,
+        "elapsedMs": 308.4,
+        "throughputQueriesPerSecond": 64.9
+      },
+      "medianLatencyReductionPercent": 90.8,
+      "medianSpeedup": 10.91
+    },
+    {
+      "name": "workschedule.attendance.mine",
+      "index": {
+        "employee_id": 1,
+        "date": 1,
+        "source": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "employee_date_source_unique"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 313.299,
+        "medianMs": 281.059,
+        "p95Ms": 572.972,
+        "operationsPerSecond": 3.2,
+        "elapsedMs": 1785.1,
+        "throughputQueriesPerSecond": 11.2
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 37.168,
+        "medianMs": 18.942,
+        "p95Ms": 102.58,
+        "operationsPerSecond": 26.9,
+        "elapsedMs": 192.3,
+        "throughputQueriesPerSecond": 104
+      },
+      "medianLatencyReductionPercent": 93.3,
+      "medianSpeedup": 14.84
+    },
+    {
+      "name": "workschedule.attendance.scan_token",
+      "index": {
+        "token": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 1,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "LIMIT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 1,
+        "docsExamined": 1,
+        "keysExamined": 1,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "token_unique"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 339.649,
+        "medianMs": 300.264,
+        "p95Ms": 590.526,
+        "operationsPerSecond": 2.9,
+        "elapsedMs": 1804.6,
+        "throughputQueriesPerSecond": 11.1
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 6.737,
+        "medianMs": 2.537,
+        "p95Ms": 7.289,
+        "operationsPerSecond": 148.4,
+        "elapsedMs": 93.3,
+        "throughputQueriesPerSecond": 214.4
+      },
+      "medianLatencyReductionPercent": 99.2,
+      "medianSpeedup": 118.35
+    },
+    {
+      "name": "canteen.orders.all_latest",
+      "index": {
+        "createdAt": -1,
+        "_id": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "createdAt_id"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 554.393,
+        "medianMs": 489.329,
+        "p95Ms": 907.037,
+        "operationsPerSecond": 1.8,
+        "elapsedMs": 3303.2,
+        "throughputQueriesPerSecond": 6.1
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 51.875,
+        "medianMs": 24.805,
+        "p95Ms": 96.278,
+        "operationsPerSecond": 19.3,
+        "elapsedMs": 301.5,
+        "throughputQueriesPerSecond": 66.3
+      },
+      "medianLatencyReductionPercent": 94.9,
+      "medianSpeedup": 19.73
+    },
+    {
+      "name": "canteen.orders.by_status",
+      "index": {
+        "status": 1,
+        "createdAt": -1,
+        "_id": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "status_createdAt_id"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 314.709,
+        "medianMs": 203.57,
+        "p95Ms": 599.129,
+        "operationsPerSecond": 3.2,
+        "elapsedMs": 1901.9,
+        "throughputQueriesPerSecond": 10.5
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 121.238,
+        "medianMs": 98.257,
+        "p95Ms": 305.158,
+        "operationsPerSecond": 8.2,
+        "elapsedMs": 612.7,
+        "throughputQueriesPerSecond": 32.6
+      },
+      "medianLatencyReductionPercent": 51.7,
+      "medianSpeedup": 2.07
+    },
+    {
+      "name": "canteen.orders.user_history",
+      "index": {
+        "userId": 1,
+        "createdAt": -1,
+        "_id": -1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "userId_createdAt_id"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 278.012,
+        "medianMs": 294,
+        "p95Ms": 412.302,
+        "operationsPerSecond": 3.6,
+        "elapsedMs": 1513.3,
+        "throughputQueriesPerSecond": 13.2
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 61.564,
+        "medianMs": 80.055,
+        "p95Ms": 94.567,
+        "operationsPerSecond": 16.2,
+        "elapsedMs": 373.7,
+        "throughputQueriesPerSecond": 53.5
+      },
+      "medianLatencyReductionPercent": 72.8,
+      "medianSpeedup": 3.67
+    },
+    {
+      "name": "canteen.orders.active_table_check",
+      "index": {
+        "tableId": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 1,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "LIMIT",
+          "PROJECTION_SIMPLE",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 1,
+        "docsExamined": 60,
+        "keysExamined": 60,
+        "stages": [
+          "LIMIT",
+          "PROJECTION_SIMPLE",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "tableId"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 333.562,
+        "medianMs": 300.277,
+        "p95Ms": 511.027,
+        "operationsPerSecond": 3,
+        "elapsedMs": 1794.7,
+        "throughputQueriesPerSecond": 11.1
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 14.386,
+        "medianMs": 3.826,
+        "p95Ms": 75.819,
+        "operationsPerSecond": 69.5,
+        "elapsedMs": 96.1,
+        "throughputQueriesPerSecond": 208.2
+      },
+      "medianLatencyReductionPercent": 98.7,
+      "medianSpeedup": 78.48
+    },
+    {
+      "name": "canteen.menu.public_category",
+      "index": {
+        "categoryId": 1,
+        "isAvailable": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 60,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 60,
+        "docsExamined": 60,
+        "keysExamined": 60,
+        "stages": [
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "categoryId_isAvailable"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 297.877,
+        "medianMs": 209.079,
+        "p95Ms": 694.773,
+        "operationsPerSecond": 3.4,
+        "elapsedMs": 1913.6,
+        "throughputQueriesPerSecond": 10.5
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 27.411,
+        "medianMs": 9.084,
+        "p95Ms": 85.429,
+        "operationsPerSecond": 36.5,
+        "elapsedMs": 202.7,
+        "throughputQueriesPerSecond": 98.6
+      },
+      "medianLatencyReductionPercent": 95.7,
+      "medianSpeedup": 23.02
+    },
+    {
+      "name": "canteen.categories.public_sort",
+      "index": {
+        "displayOrder": 1,
+        "name": 1
+      },
+      "documents": 30000,
+      "virtualUsers": 4,
+      "queriesPerUser": 5,
+      "noIndexPlan": {
+        "returned": 20,
+        "docsExamined": 30000,
+        "keysExamined": 0,
+        "stages": [
+          "SORT",
+          "COLLSCAN"
+        ],
+        "indexes": []
+      },
+      "indexedPlan": {
+        "returned": 20,
+        "docsExamined": 20,
+        "keysExamined": 20,
+        "stages": [
+          "LIMIT",
+          "FETCH",
+          "IXSCAN"
+        ],
+        "indexes": [
+          "displayOrder_name"
+        ]
+      },
+      "noIndex": {
+        "samples": 20,
+        "meanMs": 409.116,
+        "medianMs": 401.898,
+        "p95Ms": 588.571,
+        "operationsPerSecond": 2.4,
+        "elapsedMs": 2196.2,
+        "throughputQueriesPerSecond": 9.1
+      },
+      "indexed": {
+        "samples": 20,
+        "meanMs": 25.614,
+        "medianMs": 5.155,
+        "p95Ms": 79.552,
+        "operationsPerSecond": 39,
+        "elapsedMs": 172.1,
+        "throughputQueriesPerSecond": 116.2
+      },
+      "medianLatencyReductionPercent": 98.7,
+      "medianSpeedup": 77.96
+    }
+  ]
+}

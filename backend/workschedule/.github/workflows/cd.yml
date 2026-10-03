@@ -1,0 +1,29 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Shared VPS deployment
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == github.event.repository.default_branch
+    uses: lethanh2006/Logger/.github/workflows/reusable-vps-cd.yml@8f26f109b44c5fb0454a911d9dd8c601350c6281
+    with:
+      service-name: workschedule
+      deploy-revision: ${{ github.event.workflow_run.head_sha }}
+      default-branch: ${{ github.event.repository.default_branch }}
+      platform-ref: 8f26f109b44c5fb0454a911d9dd8c601350c6281
+    secrets:
+      VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}

@@ -1,0 +1,62 @@
+name: Cập nhật ứng dụng qua EAS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: eas-update-production
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Phát hành bản cập nhật Android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Kiểm tra EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Thiếu repository secret EXPO_TOKEN."
+            echo "Tạo token tại https://expo.dev/settings/access-tokens"
+            exit 1
+          fi
+
+      - name: Lấy source code
+        uses: actions/checkout@v5
+
+      - name: Cài Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Cài EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Cài dependencies
+        run: npm ci
+
+      - name: Kiểm tra trước khi phát hành
+        run: |
+          npm run lint
+          npx tsc --noEmit
+
+      - name: Phát hành lên channel production
+        env:
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message || format('Chạy thủ công từ {0}', github.sha) }}
+        run: >-
+          eas update
+          --channel production
+          --platform android
+          --message "$UPDATE_MESSAGE"
+          --non-interactive

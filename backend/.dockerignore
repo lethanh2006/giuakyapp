@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/coverage
+**/.git
+**/.env
+**/.env.*
+**/*.log
+**/logs
+.git
+.gitignore
+compose*.yml
+compose*.yaml
+DOCKER_COMPOSE_GUIDE.md
+

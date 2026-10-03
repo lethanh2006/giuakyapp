@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  on|off)
+    ln -sfn \
+      "/etc/nginx/snippets/nrapp-swagger-${1}.conf" \
+      /etc/nginx/snippets/nrapp-swagger-active.conf
+    nginx -t
+    systemctl reload nginx
+    echo "Swagger: ${1}"
+    ;;
+  *)
+    echo "Dung: sudo nrapp-swagger on|off"
+    exit 1
+    ;;
+esac

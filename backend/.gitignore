@@ -1,0 +1,5 @@
+.env
+.env.local
+
+# Google OAuth client secrets must never be committed.
+client_secret*.json

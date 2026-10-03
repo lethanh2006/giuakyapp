@@ -1,0 +1,97 @@
+name: Reusable Node CI
+
+on:
+  workflow_call:
+    inputs:
+      platform-ref:
+        description: Immutable Logger commit containing the shared package
+        required: true
+        type: string
+      node-version:
+        description: Node.js major version
+        required: false
+        default: "22"
+        type: string
+      test-command:
+        description: Service-specific test command
+        required: false
+        default: npm test -- --ci --runInBand
+        type: string
+      build-command:
+        description: Service-specific build command
+        required: false
+        default: npm run build
+        type: string
+      run-build:
+        description: Run a separate build step after tests
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, audit, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: service
+    env:
+      CI: "true"
+      NODE_ENV: test
+      LOG_FORMAT: json
+
+    steps:
+      - name: Checkout service
+        uses: actions/checkout@v7
+        with:
+          path: service
+          persist-credentials: false
+
+      - name: Checkout shared platform package
+        uses: actions/checkout@v7
+        with:
+          repository: lethanh2006/Logger
+          ref: ${{ inputs.platform-ref }}
+          path: logger
+          sparse-checkout: packages/observability
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: |
+            service/package-lock.json
+            logger/packages/observability/package-lock.json
+
+      - name: Install shared package dependencies
+        working-directory: logger/packages/observability
+        run: npm ci --no-audit --no-fund
+
+      - name: Install service dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Block critical production dependency vulnerabilities
+        run: npm audit --omit=dev --audit-level=critical
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Unit tests
+        env:
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: bash -Eeuo pipefail -c "$TEST_COMMAND"
+
+      - name: Build
+        if: inputs.run-build
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+        run: bash -Eeuo pipefail -c "$BUILD_COMMAND"

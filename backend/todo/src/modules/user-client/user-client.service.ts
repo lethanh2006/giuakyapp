@@ -1,0 +1,252 @@
+import {
+  BadGatewayException,
+  HttpException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createHash, createHmac } from 'node:crypto';
+import { Types } from 'mongoose';
+import { StructuredLoggerService } from '../../common/logging/logger';
+import { toError } from '../../common/utils/error.util';
+
+type TaskRow = Record<string, unknown>;
+
+interface DirectoryUser {
+  _id: unknown;
+  username: unknown;
+  email: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const DIRECTORY_PATH = '/api/user/internal/directory-batch';
+const FORBIDDEN_INTERNAL_SECRETS = new Set([
+  'replace_with_at_least_32_random_characters',
+  'your-super-secret-key-chatapp',
+  'your_jwt_secret_here',
+]);
+
+@Injectable()
+export class UserClientService {
+  private readonly baseUrl: string;
+  private readonly timeoutMs: number;
+  private readonly userInternalSecret: string;
+  private readonly pendingDirectoryReads = new Map<
+    string,
+    Promise<Map<string, DirectoryUser>>
+  >();
+
+  constructor(
+    config: ConfigService,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.baseUrl = (
+      config.get<string>('USER_SERVICE_URL') ??
+      config.get<string>('USER_SERVICE') ??
+      'http://localhost:5000'
+    ).replace(/\/+$/, '');
+    this.timeoutMs = this.parseTimeout(
+      config.get<string | number>('USER_SERVICE_TIMEOUT_MS'),
+    );
+    this.userInternalSecret = this.requireInternalSecret(
+      config.get<string>('USER_INTERNAL_SECRET'),
+    );
+  }
+
+  async exists(userId: string, requestId: string): Promise<boolean> {
+    const response = await this.request(
+      `/api/user/internal/${encodeURIComponent(userId)}`,
+      { headers: { 'x-request-id': requestId } },
+      { operation: 'user_exists', requestId, allowNotFound: true },
+    );
+    return response.status !== 404;
+  }
+
+  async enrichTasks(
+    tasks: TaskRow[],
+    userPayload: string | undefined,
+    requestId: string,
+  ): Promise<TaskRow[]> {
+    if (tasks.length === 0 || !userPayload) return tasks;
+
+    const ids = [
+      ...new Set(
+        tasks
+          .flatMap((task) => [task.createdBy, task.assignedTo])
+          .flatMap((value) =>
+            typeof value === 'string'
+              ? [value]
+              : value instanceof Types.ObjectId
+                ? [value.toHexString()]
+                : [],
+          )
+          .filter((id) => /^[a-f0-9]{24}$/i.test(id)),
+      ),
+    ];
+    if (!ids.length) return tasks;
+    ids.sort();
+
+    try {
+      const users = await this.getDirectoryUsers(ids, userPayload, requestId);
+      return tasks.map((task) => ({
+        ...task,
+        createdBy: users.get(String(task.createdBy)) ?? task.createdBy,
+        assignedTo: users.get(String(task.assignedTo)) ?? task.assignedTo,
+      }));
+    } catch (error: unknown) {
+      this.logger.warn('user_service_enrichment_skipped', {
+        requestId,
+        operation: 'enrich_tasks',
+        statusCode: error instanceof HttpException ? error.getStatus() : 502,
+        errorName: toError(error).name,
+      });
+      return tasks;
+    }
+  }
+
+  private async getDirectoryUsers(
+    ids: string[],
+    userPayload: string,
+    requestId: string,
+  ): Promise<Map<string, DirectoryUser>> {
+    const key = createHash('sha256')
+      .update(userPayload)
+      .update('\0')
+      .update(ids.join('\0'))
+      .digest('hex');
+    const existing = this.pendingDirectoryReads.get(key);
+    if (existing) return existing;
+
+    const pending = this.loadDirectoryUsers(ids, userPayload, requestId);
+    if (this.pendingDirectoryReads.size < 256) {
+      this.pendingDirectoryReads.set(key, pending);
+    }
+    try {
+      return await pending;
+    } finally {
+      if (this.pendingDirectoryReads.get(key) === pending) {
+        this.pendingDirectoryReads.delete(key);
+      }
+    }
+  }
+
+  private async loadDirectoryUsers(
+    ids: string[],
+    userPayload: string,
+    requestId: string,
+  ): Promise<Map<string, DirectoryUser>> {
+    const users = new Map<string, DirectoryUser>();
+    for (let offset = 0; offset < ids.length; offset += 100) {
+      const response = await this.request(
+        DIRECTORY_PATH,
+        {
+          method: 'POST',
+          body: JSON.stringify({ ids: ids.slice(offset, offset + 100) }),
+          headers: {
+            ...this.signedDirectoryHeaders(userPayload, requestId),
+            'content-type': 'application/json',
+          },
+        },
+        { operation: 'enrich_tasks', requestId },
+      );
+      const payload = (await response.json()) as { users?: unknown };
+      if (!Array.isArray(payload.users)) {
+        this.logger.warn('user_service_payload_invalid', {
+          requestId,
+          operation: 'enrich_tasks',
+          statusCode: 502,
+        });
+        throw new BadGatewayException({
+          message: 'Phản hồi danh sách người dùng không hợp lệ',
+        });
+      }
+      for (const raw of payload.users) {
+        if (!isRecord(raw)) continue;
+        const user = {
+          _id: raw._id,
+          username: raw.username,
+          email: raw.email,
+        };
+        users.set(String(user._id), user);
+      }
+    }
+    return users;
+  }
+
+  private async request(
+    path: string,
+    init: RequestInit,
+    context: {
+      operation: string;
+      requestId: string;
+      allowNotFound?: boolean;
+    },
+  ): Promise<Response> {
+    try {
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+
+      if (response.status >= 500 || response.status === 429) {
+        throw new ServiceUnavailableException({
+          message: 'Dịch vụ người dùng tạm thời không khả dụng',
+        });
+      }
+      if (!response.ok && !(context.allowNotFound && response.status === 404)) {
+        throw new BadGatewayException({
+          message: 'Phản hồi từ dịch vụ người dùng không hợp lệ',
+        });
+      }
+
+      return response;
+    } catch (error: unknown) {
+      if (error instanceof HttpException) throw error;
+      throw new ServiceUnavailableException(
+        {
+          message: 'Không kết nối được dịch vụ người dùng',
+        },
+        { cause: toError(error) },
+      );
+    }
+  }
+
+  private parseTimeout(value: string | number | undefined): number {
+    const timeoutMs = Number(value ?? 3000);
+    return Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? Math.min(Math.trunc(timeoutMs), 60_000)
+      : 3000;
+  }
+
+  private requireInternalSecret(value: string | undefined): string {
+    const secret = value?.trim();
+    if (
+      !secret ||
+      Buffer.byteLength(secret) < 32 ||
+      FORBIDDEN_INTERNAL_SECRETS.has(secret.toLowerCase())
+    ) {
+      throw new Error('USER_INTERNAL_SECRET phải có ít nhất 32 byte');
+    }
+    return secret;
+  }
+
+  private signedDirectoryHeaders(
+    payload: string,
+    requestId: string,
+  ): Record<string, string> {
+    const timestamp = Date.now().toString();
+    const context = `POST:${DIRECTORY_PATH}`;
+    const signature = createHmac('sha256', this.userInternalSecret)
+      .update(`${timestamp}.${requestId}.${payload}.${context}`)
+      .digest('hex');
+    return {
+      'x-request-id': requestId,
+      'x-user-payload': payload,
+      'x-user-timestamp': timestamp,
+      'x-user-signature': signature,
+    };
+  }
+}
