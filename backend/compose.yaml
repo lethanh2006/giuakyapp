@@ -4,6 +4,8 @@ name: ${COMPOSE_PROJECT_NAME:-nrapp-local-dev}
 
 services:
   mongo:
+    # Atlas is the shared dev database. Enable this only for optional local Mongo.
+    profiles: ["local-mongo"]
     image: mongo:7.0
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:

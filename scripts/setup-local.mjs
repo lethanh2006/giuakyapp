@@ -58,6 +58,7 @@ const existingRootEnv = !reset && existsSync(rootEnvPath)
 const secrets = Object.fromEntries(secretKeys.map((key) => [
   key, existingRootEnv[key] || randomBytes(32).toString('hex'),
 ]));
+let sharedValues = { ...existingRootEnv, ...secrets };
 
 function backup(file) {
   if (!existsSync(file)) return;
@@ -82,10 +83,13 @@ for (const target of targets) {
   }
   const template = readFileSync(resolve(folder, '.env.example'), 'utf8');
   const contents = template.replace(/__([A-Z][A-Z0-9_]+)__/g, (_, key) => {
-    if (!secrets[key]) throw new Error(`Chưa định nghĩa giá trị ${key}`);
-    return secrets[key];
+    if (!sharedValues[key]) throw new Error(`Chưa định nghĩa giá trị ${key}`);
+    return sharedValues[key];
   });
   writeFileSync(destination, contents, { mode: 0o600 });
+  if (target === 'backend') {
+    sharedValues = { ...sharedValues, ...parseEnv(contents) };
+  }
   console.log(`Tạo ${target}/.env`);
 }
 if (reset) console.log(`Env cũ được sao lưu tại ${relative(rootDir, backupDir)}/`);
@@ -115,6 +119,11 @@ if (!args.has('--env-only')) {
     }
   }
 }
-console.log('\nĐã chuẩn bị local dev. Mở hai terminal:');
+const finalRootEnv = parseEnv(readFileSync(rootEnvPath, 'utf8'));
+if ((finalRootEnv.MONGO_MODE || 'atlas') === 'atlas') {
+  console.log('\nMongoDB dùng Atlas dev chung. Điền URI do nhóm cung cấp vào MONGO_URL');
+  console.log('trong backend/.env và thêm IP máy của bạn vào Atlas Network Access.');
+}
+console.log('\nMở hai terminal sau khi hoàn tất cấu hình MongoDB:');
 console.log('  npm run dev:backend');
 console.log('  npm run dev:web   (hoặc npm run dev:mobile)');

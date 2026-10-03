@@ -9,7 +9,7 @@ const { ChatService } = require('/workspace/service/dist/modules/chat/chat.servi
 async function main() {
   const prefix = 'nrapp_perf_check_' + Date.now();
   const connection = await mongoose.createConnection(process.env.MONGO_URL, {
-    dbName: 'nrapp', maxPoolSize: 2, serverSelectionTimeoutMS: 10000,
+    dbName: process.env.MONGO_DB_NAME || 'nrapp', maxPoolSize: 2, serverSelectionTimeoutMS: 10000,
   }).asPromise();
   const Chat = connection.model('CheckChat', ChatSchema, prefix + '_chats');
   const Message = connection.model('CheckMessage', MessageSchema, prefix + '_messages');

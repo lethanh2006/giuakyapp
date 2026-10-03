@@ -4,17 +4,29 @@ Nhân viên đăng ký lịch theo tháng, xem trạng thái duyệt và chấm 
 
 ## Yêu cầu MongoDB
 
-MongoDB phải chạy dạng **replica set** khi chạy local (Compose của dự án đã tự khởi tạo). Service kiểm tra khả năng này lúc khởi động và báo lỗi rõ nếu kết nối tới MongoDB standalone.
+Mặc định đội dùng chung **MongoDB Atlas dev**, database `nrapp_dev`. Atlas hỗ trợ transaction nên không cần chạy MongoDB Docker khi phát triển. Nếu chủ động dùng MongoDB local, MongoDB phải chạy dạng **replica set**; Compose profile `local-mongo` của dự án tự khởi tạo `rs0`. Service kiểm tra khả năng này lúc khởi động và báo lỗi rõ nếu kết nối tới MongoDB standalone.
 
 Các thao tác tạo, gửi lại, sửa, xóa và duyệt lịch sử dụng transaction để lưu yêu cầu, các ngày đăng ký và chấm công từ xa cùng lúc. Nếu một bước lỗi, toàn bộ thay đổi được hoàn tác. Khi hai thao tác cùng sửa một yêu cầu, MongoDB thử lại transaction với dữ liệu mới nhất; lịch đã duyệt không bị một lần gửi lại thất bại ghi đè.
 
-Ví dụ cấu hình MongoDB local sau khi khởi tạo replica set tên `rs0`:
+Chạy `npm run setup` tại thư mục gốc, sau đó điền URI Atlas dev do trưởng nhóm cung cấp riêng vào `backend/.env`:
 
 ```dotenv
-MONGO_URL=mongodb://127.0.0.1:27017/nrapp?replicaSet=rs0&directConnection=true
+MONGO_MODE=atlas
+MONGO_URL=mongodb+srv://<db_user>:<url_encoded_password>@<dev_cluster>/nrapp_dev?retryWrites=true&w=majority
+MONGO_DB_NAME=nrapp_dev
 ```
 
-Chạy `npm run setup` rồi `npm run dev:backend` từ thư mục gốc; xem [hướng dẫn local](../../README.md).
+`MONGO_DB_NAME` quyết định database sử dụng, kể cả khi URI chứa tên database khác. Các thành viên cùng kết nối sẽ thấy chung dữ liệu lịch và chấm công dev. Không commit URI chứa mật khẩu thật.
+
+Bật nhóm lịch làm việc từ thư mục gốc; runner bật hạ tầng local cần thiết và các service ở chế độ watch:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail,workschedule
+```
+
+Chạy `npm run dev:backend` khi cần kiểm tra toàn bộ ứng dụng. Nếu chạy riêng service, cần tự bật các dependency. Service đọc `backend/.env` trước `.env` riêng, nên cấu hình Mongo tập trung vẫn áp dụng khi chạy trực tiếp.
+
+MongoDB Docker là lựa chọn riêng khi đặt `MONGO_MODE=local`, dùng profile `local-mongo` và URI replica set `rs0`. Xem [hướng dẫn local](../../README.md) để chuyển chế độ.
 
 ## Chuyển dữ liệu lịch tuần sang luồng tháng
 

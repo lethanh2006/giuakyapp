@@ -7,15 +7,10 @@ import { MongooseModule } from '@nestjs/mongoose';
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const uri = configService.get<string>('MONGO_URL');
-        if (!uri) throw new Error('MONGO_URL is not defined');
-
-        return {
-          uri,
-          dbName: configService.get<string>('MONGO_DB_NAME') || 'nrapp',
-        };
-      },
+      useFactory: (configService: ConfigService) => ({
+        uri: configService.getOrThrow<string>('MONGO_URL'),
+        dbName: configService.get<string>('MONGO_DB_NAME') || 'nrapp',
+      }),
     }),
   ],
 })

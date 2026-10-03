@@ -5,9 +5,9 @@
     "setup": "node ../scripts/setup-local.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:apps": "node scripts/dev.mjs --skip-infra",
-    "infra:up": "docker compose up -d --wait",
-    "infra:down": "docker compose down",
-    "infra:logs": "docker compose logs --tail=100 -f"
+    "infra:up": "node scripts/infra.mjs up",
+    "infra:down": "node scripts/infra.mjs down",
+    "infra:logs": "node scripts/infra.mjs logs"
   },
   "engines": {
     "node": ">=20.19"
