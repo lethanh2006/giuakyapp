@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "test": "npm run build && node --test $(find dist -type f -name '*.test.js' -print)",
-    "test:logging": "npm run build && LOG_FORMAT=json node --test dist/common/logging/gateway-observability.test.js",
+    "test": "npm run build && node scripts/run-tests.mjs",
+    "test:logging": "npm run build && node scripts/run-tests.mjs --logging",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "lint": "eslint \"src/**/*.ts\"",

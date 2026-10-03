@@ -62,6 +62,158 @@ Nhấn `a` để mở Android Emulator. API tự dùng `10.0.2.2:3000` trên emu
 `localhost:3000` trên web và iOS Simulator. Chat Socket.IO đi qua Gateway
 cổng 3000, nên không phải đổi riêng URL chat.
 
+## Hai bạn sửa code và test local thế nào?
+
+Sau lần setup đầu, mỗi bạn làm trên nhánh Git và database local riêng. Không
+cần chạy lại `npm run setup` mỗi lần sửa code hoặc mỗi lần khởi động máy.
+
+- Sửa code **BE**: giữ terminal BE đang chạy. Nest watch tự biên dịch và khởi
+  động lại service có file thay đổi; chờ log hết lỗi rồi thao tác lại trên FE.
+- Sửa code **FE**: giữ Expo đang chạy. Fast Refresh cập nhật giao diện; nếu
+  thay đổi chưa hiện, reload ứng dụng/trình duyệt.
+- Sửa **`.env`**: dừng rồi chạy lại BE hoặc Expo tương ứng. FE có thể chạy lại
+  bằng `npm run dev:web -- --clear` sau khi đổi env.
+- Thêm/đổi dependency: dùng `npm install` trong đúng thư mục có `package.json`
+  của service/FE; commit cả `package.json` và `package-lock.json`. Bạn còn lại
+  sau khi pull chạy `npm ci` trong thư mục đó. Nếu nhiều phần đổi dependency,
+  có thể chạy `npm run setup` ở gốc; lệnh này giữ env hiện tại.
+- Đổi/thêm biến env cần cho cả nhóm: cập nhật `.env.example` và hướng dẫn,
+  mỗi bạn điền vào `.env` trên máy mình. Không chạy `--reset-env` hằng ngày.
+
+### Có cần chạy cả BE khi chỉ sửa một vài service?
+
+**Không bắt buộc.** Chọn theo việc đang kiểm tra:
+
+| Việc đang làm | Cần chạy gì? |
+| --- | --- |
+| Unit test BE có mock, lint hoặc build | Chạy lệnh kiểm tra trong service; không cần bật FE/cả BE |
+| Sửa giao diện FE và xem dữ liệu thật | Expo + nhóm BE phục vụ màn hình đó |
+| Sửa API một service rồi test qua FE | Nhóm đăng nhập + service đó + Expo |
+| Sửa đồng thời nhiều chức năng, Auth/Gateway hoặc muốn kiểm tra toàn bộ app | Chạy cả cụm bằng `npm run dev:backend` + Expo |
+
+Nhóm BE dưới đây bao gồm đăng ký, đăng nhập OTP và đọc hồ sơ, để không phải
+bỏ qua bước xác thực khi test tính năng:
+
+| Tính năng cần test trên FE | Danh sách Node service |
+| --- | --- |
+| Đăng ký, OTP, hồ sơ, danh bạ | `gateway,auth,user,mail` |
+| Chat | `gateway,auth,user,mail,chat` |
+| Todo / công việc | `gateway,auth,user,mail,todo` |
+| Lịch làm việc / chấm công / đơn nhân sự | `gateway,auth,user,mail,workschedule` |
+| Căn tin / thanh toán tiền mặt | `gateway,auth,user,mail,canteen` |
+
+Ví dụ **chỉ sửa chat**, terminal BE tại thư mục gốc:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail,chat
+```
+
+Ví dụ **sửa cả Todo và lịch làm việc**:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail,todo,workschedule
+```
+
+Terminal FE vẫn dùng `npm run dev:web` hoặc `npm run dev:mobile` như bình
+thường. Runner chỉ chạy các Node service được liệt kê, tự lấy env/cổng local
+và bật hạ tầng Docker. `--services` **không tự thêm service phụ thuộc**; dùng
+các nhóm trong bảng. Phần hạ tầng nhỏ vẫn được bật đủ, còn các Node service
+không chọn sẽ không biên dịch hoặc chạy.
+
+Nếu muốn thử trực tiếp một service BE, ví dụ `todo`, có thể dùng
+`npm run dev:backend -- --services=todo`. Tự bổ sung các dependency được API
+đó gọi; API được bảo vệ còn cần identity/chữ ký hợp lệ. Để test qua FE/Swagger,
+dùng nhóm có Gateway trong bảng sẽ thuận tiện hơn.
+
+Payment hiện chưa nối Gateway/FE. Phát triển riêng bằng
+`npm run dev:backend -- --services=payment`, chạy test của Payment và kiểm tra
+API nội bộ có chữ ký; không dùng màn hình căn tin để kết luận Payment đã hoạt động.
+
+**Dừng phiên BE hiện tại bằng `Ctrl+C` trước khi đổi nhóm service.** Không chạy
+cả cụm và một nhóm có cùng service đồng thời vì sẽ trùng port. Trong chế độ
+chọn service, các màn hình dùng service chưa bật có thể báo lỗi; chat nền cũng
+không kết nối nếu chưa bật `chat`. Muốn kiểm tra toàn bộ ứng dụng thì chạy cả cụm.
+Gateway `/health` chỉ xác nhận Gateway đang chạy; vẫn phải thao tác API/tính
+năng cần test để kiểm tra các service phía sau. API có token vẫn cần Auth vì
+Gateway xác minh token qua Auth.
+
+### Kiểm tra trước khi commit/push
+
+Trước tiên thử tính năng đã sửa trên FE/API local: trường hợp thành công,
+validation dữ liệu sai và quyền user/admin nếu có thay đổi quyền. Nếu đổi
+request/response giữa FE và BE, thử cả hai đầu cùng phiên bản code. Ví dụ sửa
+chat thì đăng nhập hai tài khoản, gửi tin nhắn và kiểm tra bên nhận cập nhật.
+
+Sau khi test thao tác, dừng BE watch trước các lệnh build để tránh ghi đè
+`dist` của service đang chạy. Từ thư mục gốc, chỉ kiểm tra các phần đã sửa.
+Ví dụ đã sửa **Chat và FE**:
+
+```bash
+npm --prefix backend/chat run lint
+npm --prefix backend/chat test -- --runInBand
+npm --prefix backend/chat run build
+npm --prefix Nrapp run lint
+npm --prefix Nrapp run typecheck
+```
+
+Thay `chat` bằng service thực tế. Chỉ sửa BE thì không cần chạy kiểm tra FE;
+chỉ sửa FE thì chạy hai lệnh FE và thử màn hình với BE đang dùng. Nếu sửa hai
+service, chạy lint/test/build cho cả hai. Unit test có mock không cần khởi động
+cả cụm; integration test có thể cần Docker hoặc dependency riêng.
+
+**Gateway dùng Node test runner**, chạy riêng như sau; không thêm `--runInBand`:
+
+```bash
+npm --prefix backend/gateway run lint
+npm --prefix backend/gateway test
+```
+
+Lệnh test Gateway tự build trước khi chạy. Khi sửa luồng lịch làm việc có
+transaction, có thể chạy thêm bài kiểm tra tích hợp đã có:
+
+```bash
+npm --prefix backend/workschedule run test:e2e
+```
+
+Bài này cần Docker, tự tạo dữ liệu/tiến trình tạm. Nếu sửa package log dùng
+chung, chạy `npm --prefix backend/logger/packages/observability test` và kiểm
+tra các service chịu ảnh hưởng. Không cần chạy lại mọi bài test cho thay đổi
+chỉ nằm ở một service độc lập.
+
+### Quy trình Git cho hai thành viên
+
+1. Lưu/commit phần đang làm trước khi đổi nhánh. Lấy code mới từ nhánh chung
+   rồi tạo nhánh riêng, ví dụ (thay `main` nếu nhóm dùng tên nhánh khác):
+
+   ```bash
+   git switch main
+   git pull --ff-only
+   git switch -c feature/ten-ban-chat
+   ```
+
+2. Sửa code, chạy nhóm BE/FE cần thiết, test thao tác và chạy các kiểm tra ở
+   trên. Hai bạn có thể chạy local đồng thời trên hai máy; không dùng chung DB.
+3. Kiểm tra diff, chỉ stage những file của công việc đó. Ví dụ sửa chat:
+
+   ```bash
+   git status
+   git diff
+   git add backend/chat/src Nrapp/src/features/chat
+   git diff --cached
+   git commit -m "feat(chat): mo ta thay doi"
+   git push -u origin HEAD
+   ```
+
+   Điều chỉnh danh sách file nếu sửa service khác, config, test hoặc lockfile.
+   Giữ `.env`, token và `.local-env-backups/` trên máy; chia sẻ cấu hình mới
+   qua `.env.example` và README.
+4. Tạo pull request từ nhánh riêng về nhánh chung. Ghi đã sửa gì, cách chạy
+   local để kiểm tra, các lệnh test đã pass và có cần thêm env/migration không.
+   Người còn lại review trước khi merge. Sau merge, pull code mới, cài lại
+   dependency ở phần có lockfile thay đổi và thử luồng liên quan trên máy mình.
+
+Push chỉ đưa code lên Git của nhóm. Repo này không tự deploy khi push.
+
 ## Điện thoại thật qua Wi-Fi
 
 Máy chạy BE và điện thoại phải cùng mạng. Tìm IPv4 LAN của máy bằng `ipconfig`

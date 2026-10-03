@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "setup": "node scripts/setup-local.mjs",
-    "dev:backend": "npm --prefix backend run dev",
-    "dev:web": "npm --prefix Nrapp run web",
-    "dev:mobile": "npm --prefix Nrapp start",
+    "dev:backend": "node backend/scripts/dev.mjs",
+    "dev:web": "npm --prefix Nrapp run web --",
+    "dev:mobile": "npm --prefix Nrapp run start --",
     "infra:up": "npm --prefix backend run infra:up",
     "infra:down": "npm --prefix backend run infra:down"
   },

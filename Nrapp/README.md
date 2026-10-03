@@ -92,6 +92,24 @@ npm run lint
 npm run typecheck
 ```
 
+Khi sửa FE, giữ Expo đang chạy để Fast Refresh cập nhật màn hình. Nếu đổi
+env, dừng và chạy lại Expo; nếu đổi dependency, cài trong `Nrapp/` và commit
+cả `package.json`/`package-lock.json`.
+
+Test màn hình với nhóm BE tương ứng. Ví dụ từ thư mục gốc, sửa Todo:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail,todo
+```
+
+Terminal FE chạy `npm run dev:web` hoặc `npm run dev:mobile` từ gốc. Nếu API
+đổi payload/response, kiểm tra FE và BE cùng code mới; test cả thao tác thành
+công và validation/quyền liên quan. Chỉ sửa FE thì không cần chạy toàn bộ bài
+test BE. Nếu muốn kiểm tra mọi màn hình, chạy BE không có `--services`.
+
+[README gốc](../README.md) có bảng service cần cho từng chức năng, lệnh kiểm
+tra trước khi push và quy trình nhánh/commit/pull request cho hai thành viên.
+
 Tài liệu nghiệp vụ và kiến trúc:
 
 - [Kiến trúc và luồng request](docs/kien-truc-va-luong-hoat-dong.md)

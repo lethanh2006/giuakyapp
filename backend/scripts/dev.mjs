@@ -7,8 +7,7 @@ import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 
 const backendDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const skipInfra = process.argv.includes("--skip-infra");
-const services = [
+const allServices = [
   { name: "auth", portKey: "AUTH_HOST_PORT", defaultPort: "4000" },
   { name: "user", portKey: "USER_HOST_PORT", defaultPort: "5000" },
   { name: "mail", portKey: "MAIL_HOST_PORT", defaultPort: "5001" },
@@ -32,6 +31,63 @@ function fail(message) {
   console.error(message);
   process.exit(1);
 }
+
+let skipInfra = false;
+let showHelp = false;
+let requestedNames;
+for (const argument of process.argv.slice(2)) {
+  if (argument === "--skip-infra") skipInfra = true;
+  else if (argument === "--help" || argument === "-h") showHelp = true;
+  else if (argument.startsWith("--services=")) {
+    if (requestedNames !== undefined) {
+      fail("Chỉ truyền --services một lần, ngăn cách tên service bằng dấu phẩy.");
+    }
+    requestedNames = argument
+      .slice("--services=".length)
+      .split(",")
+      .map((name) => name.trim());
+    if (requestedNames.some((name) => !name)) {
+      fail(
+        "--services cần danh sách tên service không rỗng, ví dụ --services=auth,user,gateway.",
+      );
+    }
+    const unknownNames = requestedNames.filter(
+      (name) => !allServices.some((service) => service.name === name),
+    );
+    if (unknownNames.length) {
+      fail(
+        `Service không hợp lệ: ${[...new Set(unknownNames)].join(", ")}. Các service: ${allServices.map(({ name }) => name).join(", ")}.`,
+      );
+    }
+  } else {
+    fail(
+      `Tham số không hợp lệ: ${argument}. Xem npm run dev:backend -- --help.`,
+    );
+  }
+}
+
+if (showHelp) {
+  console.log(`Chạy backend local với Nest watch (tự tải lại khi sửa code).
+
+Cách dùng tại thư mục gốc:
+  npm run dev:backend
+  npm run dev:backend -- --services=auth,user,mail,gateway
+  npm run dev:backend -- --services=todo --skip-infra
+
+  --services=<tên,tên>  Chỉ chạy các service được liệt kê; mặc định chạy tất cả.
+  --skip-infra          Dùng hạ tầng Docker đã chạy, bỏ bước docker compose up.
+  --help, -h           Hiện hướng dẫn này.
+
+Các service: ${allServices.map(({ name }) => name).join(", ")}.
+Không tự thêm service phụ thuộc. Tự liệt kê đủ service của luồng cần test (xem README).
+Nếu không dùng --skip-infra, hạ tầng Docker vẫn được khởi động đầy đủ.`);
+  process.exit(0);
+}
+
+const services =
+  requestedNames === undefined
+    ? allServices
+    : allServices.filter(({ name }) => requestedNames.includes(name));
 
 if (!existsSync(resolve(backendDir, ".env"))) {
   fail("Chưa có backend/.env. Chạy npm run setup tại thư mục gốc trước.");
@@ -276,8 +332,11 @@ for (const service of services) {
 }
 
 console.log(
-  `Các service local đang khởi động. Gateway: http://localhost:${port("GATEWAY_HOST_PORT", "3000")}`,
+  `Các service local đang khởi động: ${services.map(({ name }) => name).join(", ")}.`,
 );
+if (services.some(({ name }) => name === "gateway")) {
+  console.log(`Gateway: http://localhost:${port("GATEWAY_HOST_PORT", "3000")}`);
+}
 console.log(
   `Hộp thư OTP local: http://localhost:${port("MAILPIT_UI_HOST_PORT", "8025")}`,
 );

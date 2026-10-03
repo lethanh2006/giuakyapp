@@ -75,9 +75,43 @@ Nếu đã tự khởi động các dependency local, có thể bỏ qua bước
 npm run dev:apps
 ```
 
-Để phát triển một service riêng, bật hạ tầng rồi mở terminal trong service đó
-và chạy `npm run start:dev`. Các env tạo bởi setup dùng cổng mặc định; nếu đã
-đổi cổng hạ tầng, ưu tiên runner để URL được đồng bộ.
+## Chỉ chạy các service cần sửa/test
+
+Từ `backend/`, ví dụ cần test chat qua FE:
+
+```bash
+npm run dev -- --services=gateway,auth,user,mail,chat
+```
+
+Hoặc từ thư mục gốc:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail,chat
+```
+
+Không truyền `--services` thì chạy cả chín service. Khi có danh sách, runner
+chỉ kiểm tra env/dependency/port và chạy Node watch của những service đã chọn;
+vẫn đồng bộ URL, secret và cổng hạ tầng. Hạ tầng Docker vẫn được bật đủ.
+`--services` không tự thêm dependency; nhóm `gateway,auth,user,mail` phục vụ
+đăng nhập/hồ sơ, rồi thêm `chat`, `todo`, `workschedule` hoặc `canteen` theo
+màn hình cần test. Xem bảng nhóm service và quy trình commit/push trong
+[README gốc](../README.md).
+
+Nếu hạ tầng đã chạy, thêm `--skip-infra` để không gọi Docker Compose:
+
+```bash
+npm run dev -- --skip-infra --services=gateway,auth,user,mail,todo
+```
+
+Chạy `npm run dev -- --help` để xem cú pháp. Dừng phiên đang chạy bằng
+`Ctrl+C` trước khi đổi nhóm; không chạy cùng một service trong hai terminal.
+Chỉ chạy `--services=todo` phù hợp khi thử trực tiếp service và tự cung cấp
+dependency/chữ ký cần thiết. Unit test có mock có thể chạy riêng mà không
+cần FE/cả BE.
+
+Có thể dùng `npm run start:dev` trong từng service từ IDE, nhưng cách này
+không tự ánh xạ `*_HOST_PORT` thành các URL local. Khi dùng cổng tùy chỉnh,
+ưu tiên runner ở trên.
 
 ## Kiểm tra và đọc source
 
@@ -85,9 +119,14 @@ Các lệnh kiểm tra được chạy trực tiếp trong service cần sửa:
 
 ```bash
 npm run lint
-npm test -- --runInBand
+npm test
 npm run build
 ```
+
+Dừng BE watch trước khi build. Các service dùng Jest hỗ trợ `--runInBand`;
+Gateway dùng Node test runner, `npm test` đã tự build nên không cần build thêm
+hay truyền cờ Jest. FE kiểm tra bằng lint/typecheck ở `Nrapp/`. Chạy kiểm tra
+các phần đã sửa và thử luồng FE–BE liên quan trước khi push lên nhánh riêng.
 
 Đọc `src/main.ts` → `src/app.module.ts` → `src/core/core.module.ts` →
 `src/modules/<nghiệp-vụ>/`. `COMMON.md` của từng service mô tả request, role,
