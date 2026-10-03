@@ -1,0 +1,16 @@
+{
+  "name": "nrapp-local-dev",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/setup-local.mjs",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:web": "npm --prefix Nrapp run web",
+    "dev:mobile": "npm --prefix Nrapp start",
+    "infra:up": "npm --prefix backend run infra:up",
+    "infra:down": "npm --prefix backend run infra:down"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}

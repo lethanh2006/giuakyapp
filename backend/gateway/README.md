@@ -53,7 +53,7 @@ trị này không được gửi từ ứng dụng mobile.
 
 ## Cấu hình
 
-Sao chép `.env.example` thành `.env` rồi điền giá trị theo môi trường:
+Cấu hình được tạo bởi `npm run setup` tại thư mục gốc. Các giá trị tham khảo:
 
 ```env
 PORT=3000
@@ -75,19 +75,17 @@ bỏ trống, Gateway giữ cơ chế tương thích dùng `JWT_SECRET`. Giới 
 đổi bằng `RATE_LIMIT_WINDOW_MS` và `RATE_LIMIT_MAX_REQUESTS`.
 
 Các biến observability trong `.env.example` điều khiển định dạng log, log level,
-trace export và metadata Swagger. Không commit file `.env` thật.
+metadata Swagger. Không commit file `.env` thật.
 
 ## Chạy local
 
-Gateway dùng package observability cục bộ của Logger. Đặt repository Logger cạnh
-repository này trong thư mục backend, sau đó chạy:
+Chạy `npm run setup` tại thư mục gốc của dự án để tạo env đồng bộ và cài
+dependency, sau đó `npm run dev:backend` để bật cả cụm. Xem
+[hướng dẫn local dev](../../README.md). Package log dùng chung đã nằm trong
+`backend/logger/packages/observability`.
 
-```bash
-npm ci --prefix ../logger/packages/observability --no-audit --no-fund
-npm ci
-cp .env.example .env
-npm run start:dev
-```
+Sau khi hạ tầng đã chạy, có thể mở terminal ở service này và chạy
+`npm run start:dev` để phát triển riêng.
 
 Các lệnh kiểm tra:
 
@@ -100,12 +98,3 @@ npm run build
 
 Gateway local mặc định ở `http://localhost:3000`; Swagger ở
 `http://localhost:3000/api-docs`.
-
-## CI/CD
-
-`.github/workflows/ci.yml` gọi reusable workflow kiểm tra Node.js được pin trong
-[Logger](https://github.com/lethanh2006/Logger). Workflow chạy kiểm tra dependency
-và bảo mật, lint, format, test và build. Push thành công vào nhánh mặc định sẽ
-kích hoạt `.github/workflows/cd.yml` để deploy đúng commit lên VPS thông qua
-reusable deployment workflow đã pin. Xem [.github/CI.md](.github/CI.md) để biết
-secret cần thiết và quy trình phát hành.

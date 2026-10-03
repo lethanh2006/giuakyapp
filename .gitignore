@@ -1,0 +1,16 @@
+# Cấu hình và bản sao lưu chỉ dùng trên máy cá nhân.
+.env
+.env.*
+!.env.example
+.local-env-backups/
+client_secret*.json
+
+node_modules/
+dist/
+coverage/
+.expo/
+__pycache__/
+*.pyc
+*.tsbuildinfo
+npm-debug.log*
+.DS_Store

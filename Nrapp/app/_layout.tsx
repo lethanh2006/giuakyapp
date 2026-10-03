@@ -1,6 +1,5 @@
 import { AuthSessionProvider } from "@/src/features/auth/model/AuthSessionContext";
 import { ChatSocketProvider } from "@/src/features/chat/shared/model/ChatSocketContext";
-import { configureGoogleSignin } from "@/src/services/auth/google-signin";
 import { useColorScheme } from "@/src/shared/hooks/useColorScheme";
 import { AppAlertHost } from "@/src/shared/ui/AppAlert";
 import {
@@ -10,8 +9,6 @@ import {
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Platform } from "react-native";
-import { useEffect } from "react";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../global.css";
@@ -23,16 +20,6 @@ configureReanimatedLogger({
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-
-  useEffect(() => {
-    if (Platform.OS === "web") return;
-
-    try {
-      configureGoogleSignin();
-    } catch (error) {
-      console.error("[GOOGLE_LOGIN] Không thể cấu hình Google Sign-In", error);
-    }
-  }, []);
 
   return (
     <SafeAreaProvider>

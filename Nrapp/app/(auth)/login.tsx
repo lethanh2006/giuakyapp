@@ -11,16 +11,14 @@ import {
   loginWithGoogle,
   saveAuthSession,
 } from "@/src/services/auth/auth.service";
-import { configureGoogleSignin } from "@/src/services/auth/google-signin";
+import {
+  configureGoogleSignin,
+  isGoogleSigninAvailable,
+} from "@/src/services/auth/google-signin";
 import { normalizeUser } from "@/src/shared/model/normalize-user";
 import { getApiErrorMessage } from "@/src/utils/apiHelper";
 import { ipNR } from "@/src/utils/ip";
 import { AppAlert as Alert } from "@/src/shared/ui/AppAlert";
-import {
-  GoogleSignin,
-  isErrorWithCode,
-  isSuccessResponse,
-} from "@react-native-google-signin/google-signin";
 import { isAxiosError } from "axios";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -106,10 +104,8 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      // Configure again immediately before sign-in. This avoids a race on
-      // real devices where the screen can be pressed before RootLayout's
-      // useEffect has completed.
-      configureGoogleSignin();
+      const { GoogleSignin, isSuccessResponse } =
+        await configureGoogleSignin();
 
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
@@ -131,7 +127,10 @@ export default function LoginScreen() {
       setUser(normalizeUser(data.user));
       setIsAuth(true);
     } catch (error: unknown) {
-      const nativeCode = isErrorWithCode(error) ? error.code : undefined;
+      const nativeCode =
+        typeof error === "object" && error !== null && "code" in error
+          ? String(error.code)
+          : undefined;
       const nativeMessage =
         error instanceof Error && error.message
           ? error.message
@@ -212,17 +211,19 @@ export default function LoginScreen() {
           onPress={handleSubmit}
         />
 
-        <Pressable
-          className="mt-3 min-h-14 flex-row items-center justify-center rounded-2xl border border-slate-200 bg-white active:bg-slate-50"
-          onPress={handleGoogleLogin}
-          disabled={loading}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: loading }}
-        >
-          <Text className="text-base font-extrabold text-slate-800">
-            Tiếp tục với Google
-          </Text>
-        </Pressable>
+        {isGoogleSigninAvailable() && (
+          <Pressable
+            className="mt-3 min-h-14 flex-row items-center justify-center rounded-2xl border border-slate-200 bg-white active:bg-slate-50"
+            onPress={handleGoogleLogin}
+            disabled={loading}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: loading }}
+          >
+            <Text className="text-base font-extrabold text-slate-800">
+              Tiếp tục với Google
+            </Text>
+          </Pressable>
+        )}
 
         <View className="my-5 h-px bg-slate-100" />
 

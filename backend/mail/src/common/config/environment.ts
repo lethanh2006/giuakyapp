@@ -6,6 +6,7 @@ export interface MailEnvironment extends RawEnvironment {
   SMTP_PORT: number;
   SMTP_SECURE: boolean;
   SMTP_CONNECTION_TIMEOUT_MS: number;
+  SMTP_AUTH: boolean;
   SMTP_USER: string;
   SMTP_PASS: string;
   MAIL_FROM: string;
@@ -22,7 +23,8 @@ export interface MailEnvironment extends RawEnvironment {
 }
 
 export function validateEnvironment(config: RawEnvironment): MailEnvironment {
-  const smtpUser = requiredString(config, 'SMTP_USER');
+  const smtpAuth = booleanValue(config.SMTP_AUTH, true, 'SMTP_AUTH');
+  const smtpUser = smtpAuth ? requiredString(config, 'SMTP_USER') : '';
 
   return {
     ...config,
@@ -37,9 +39,13 @@ export function validateEnvironment(config: RawEnvironment): MailEnvironment {
       500,
       30_000,
     ),
+    SMTP_AUTH: smtpAuth,
     SMTP_USER: smtpUser,
-    SMTP_PASS: requiredString(config, 'SMTP_PASS'),
-    MAIL_FROM: optionalString(config.MAIL_FROM, smtpUser),
+    SMTP_PASS: smtpAuth ? requiredString(config, 'SMTP_PASS') : '',
+    MAIL_FROM: optionalString(
+      config.MAIL_FROM,
+      smtpUser || 'NRApp Local <noreply@nrapp.local>',
+    ),
     RABBITMQ_HOST: optionalString(
       config.RABBITMQ_HOST ?? config.Rabbitmq_Host,
       'localhost',

@@ -67,7 +67,7 @@ Sao chép `.env.example` thành `.env`:
 
 ```env
 PORT=5005
-MONGO_URL=mongodb://localhost:27017/nrapp
+MONGO_URL=mongodb://127.0.0.1:27017/nrapp?replicaSet=rs0&directConnection=true
 REDIS_URL=redis://127.0.0.1:6379
 CANTEEN_INTERNAL_SECRET=replace_with_a_long_random_shared_secret
 CANTEEN_REQUIRE_SIGNATURE=false
@@ -79,15 +79,13 @@ Không commit file `.env` thật.
 
 ## Chạy local
 
-Service dùng package observability cục bộ của Logger. Đặt Logger cạnh repository
-này trong thư mục backend, sau đó chạy:
+Chạy `npm run setup` tại thư mục gốc của dự án để tạo env đồng bộ và cài
+dependency, sau đó `npm run dev:backend` để bật cả cụm. Xem
+[hướng dẫn local dev](../../README.md). Package log dùng chung đã nằm trong
+`backend/logger/packages/observability`.
 
-```bash
-npm ci --prefix ../logger/packages/observability --no-audit --no-fund
-npm ci
-cp .env.example .env
-npm run start:dev
-```
+Sau khi hạ tầng đã chạy, có thể mở terminal ở service này và chạy
+`npm run start:dev` để phát triển riêng.
 
 Các lệnh kiểm tra chất lượng và hợp đồng dữ liệu:
 
@@ -104,11 +102,3 @@ luồng quan trọng về tính nhất quán đơn hàng/trạng thái bàn.
 
 Tài liệu chi tiết hơn nằm trong [hướng dẫn vòng đời request](docs/request-lifecycle.md)
 và [hướng dẫn index database](docs/database-indexes.md).
-
-## CI/CD
-
-`.github/workflows/ci.yml` gọi reusable workflow kiểm tra Node.js đã pin từ
-[Logger](https://github.com/lethanh2006/Logger). Push thành công vào nhánh mặc
-định sẽ kích hoạt `.github/workflows/cd.yml` và deploy đúng commit thông qua
-reusable VPS workflow đã pin. Xem [.github/CI.md](.github/CI.md) để biết chi tiết
-phát hành.

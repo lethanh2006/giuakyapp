@@ -1,136 +1,99 @@
-# NRApp backend
+# NRApp backend local
 
-Backend hỗ trợ hai chế độ chạy. Cả hai dùng chung cấu hình port, RabbitMQ và
-PostgreSQL Payment trong `backend/.env`.
+Backend gồm chín service NestJS. Mã nguồn và package log dùng chung nằm trong
+cùng repo. Xem [hướng dẫn cho thành viên mới](../README.md) để chạy BE và FE.
 
-## Stack service
+## Khởi chạy
 
-Các service `chat`, `user`, `todo` và `workschedule` đã được chuyển từ Express
-bootstrap thủ công sang NestJS 11, đồng bộ toolchain với `auth`, `canteen` và
-`gateway`:
-
-- NestJS 11, `@nestjs/config` 4 và `@nestjs/mongoose` 11;
-- Mongoose 9, TypeScript 5.9, Node.js 20.19+ (container dùng Node.js 22);
-- module/controller/service + dependency injection, DTO validation;
-- request ID, structured logging, global exception filter và health endpoint;
-- shutdown lifecycle cho kết nối hạ tầng.
-
-Các HTTP path, response envelope, Socket.IO event, RabbitMQ queue và tên MongoDB
-collection cũ được giữ nguyên để Gateway và dữ liệu hiện tại tiếp tục tương thích.
-Chat dùng Nest WebSocket Gateway và Cloudinary upload stream; User quản lý
-consumer `user-profile-sync` bằng lifecycle NestJS.
-
-Bạn vẫn có thể chạy `npm run dev`/`npm run start:dev` bên trong từng service từ
-IDE. Các service dùng RabbitMQ sẽ tự đọc credential hạ tầng ở `backend/.env`.
-
-## Dev: app local, hạ tầng dùng Docker
-
-Yêu cầu: Node.js 20.19+, Docker và dependency của từng service đã được cài.
+Tại thư mục gốc của dự án, chạy `npm run setup` lần đầu. Sau đó từ `backend/`:
 
 ```bash
-cd backend
 npm run dev
 ```
 
-Lệnh này tự động:
+Runner bật Docker Compose chứa **hạ tầng local**, chờ healthy rồi chạy Node
+service ở chế độ watch. MongoDB replica set được tự khởi tạo để hỗ trợ
+transaction của Auth, User và WorkSchedule. Dữ liệu nằm trong volume riêng của
+project `nrapp-local-dev`.
 
-1. dừng các container app để không trùng port;
-2. khởi động và chờ Redis, RabbitMQ và PostgreSQL Payment healthy;
-3. chạy toàn bộ Node service local ở chế độ watch;
-4. ánh xạ URL nội bộ sang `127.0.0.1` và dùng credential RabbitMQ từ
-   `backend/.env`.
+| Service Node | Port |
+| --- | --- |
+| Gateway | 3000 |
+| Auth | 4000 |
+| User | 5000 |
+| Mail | 5001 |
+| Chat | 5002 |
+| Todo | 5003 |
+| WorkSchedule | 5004 |
+| Canteen | 5005 |
+| Payment | 5006 |
 
-Nhấn `Ctrl+C` để dừng các app local. Redis, RabbitMQ và PostgreSQL Payment vẫn
-chạy để lần khởi động sau nhanh hơn. Dừng chúng khi không dùng:
+Gateway API: `http://localhost:3000/api`. Swagger:
+`http://localhost:3000/api-docs`. Gateway nhận request từ web/emulator/điện
+thoại qua LAN và forward HTTP, Socket.IO đến các service local.
+
+## Env
+
+`backend/.env` chứa cổng hạ tầng, tài khoản local và secret dùng chung. Env trong
+từng service chứa cấu hình riêng như Google, Cloudinary và Payment demo. Runner
+đồng bộ credential và URL local khi khởi chạy, kể cả khi thay cổng hạ tầng.
+Không đặt `PORT` trong `backend/.env`; dùng các biến `AUTH_HOST_PORT`,
+`CHAT_HOST_PORT`, … để từng service có cổng riêng.
+
+`npm run setup` tại thư mục gốc sinh các secret ngẫu nhiên và điền vào template.
+Không sao chép nguyên `.env.example` của BE để chạy, vì các marker `__…__` cần
+được setup thay bằng giá trị thực. Để chỉ tạo env:
 
 ```bash
+npm run setup -- --env-only
+```
+
+Lệnh giữ env có sẵn. Thêm `--reset-env` để sao lưu env cũ rồi tạo cấu hình local
+mới. Không dùng tùy chọn này hằng ngày: RabbitMQ/PostgreSQL trong volume giữ
+credential được tạo lần đầu.
+
+## Hạ tầng
+
+```bash
+npm run infra:up
+npm run infra:logs
 npm run infra:down
 ```
 
-Nếu hạ tầng đã chạy sẵn và không muốn script đụng tới Docker:
+Các container gồm MongoDB `rs0`, Redis, RabbitMQ, PostgreSQL Payment và Mailpit.
+MongoDB/Redis/RabbitMQ/PostgreSQL/Mailpit chỉ publish cổng ở `127.0.0.1`.
+Mailpit mặc định nhận SMTP ở `1025`, không cần tài khoản SMTP; mở
+`http://localhost:8025` để lấy OTP. [Cấu hình SMTP của Mailpit](https://mailpit.axllent.org/docs/configuration/smtp/).
+
+Nhấn `Ctrl+C` dừng các process Node do runner tạo, hạ tầng vẫn chạy và giữ dữ
+liệu. `infra:down` dừng container, giữ volume. Không có bước build image app,
+CI/CD, VPS, Nginx, monitoring hoặc deploy trong luồng này.
+
+Nếu đã tự khởi động các dependency local, có thể bỏ qua bước Docker:
 
 ```bash
 npm run dev:apps
 ```
 
-Gateway mặc định ở `http://localhost:3000`, Swagger ở
-`http://localhost:3000/api-docs`.
+Để phát triển một service riêng, bật hạ tầng rồi mở terminal trong service đó
+và chạy `npm run start:dev`. Các env tạo bởi setup dùng cổng mặc định; nếu đã
+đổi cổng hạ tầng, ưu tiên runner để URL được đồng bộ.
 
-MongoDB hiện là hạ tầng bên ngoài Compose. Khi chạy local, đặt `MONGO_URL` trong
-`.env` của từng service tới MongoDB có thể truy cập từ máy host. Khi chạy toàn bộ
-bằng Docker, không dùng `localhost` trong `MONGO_URL`; hãy dùng hostname/DNS mà
-container truy cập được. Các service tiếp tục dùng database `nrapp` để đọc đúng
-dữ liệu hiện có.
+## Kiểm tra và đọc source
 
-## pgAdmin web cho team
-
-Điền `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD` vào `backend/.env`, rồi
-chạy `npm run pgadmin:up`. Mở <http://127.0.0.1:5050> trên máy host.
-Service dùng profile `admin` và volume `pgadmin_data`, tự khởi động lại cùng
-Docker trừ khi đã chủ động dừng. Dừng riêng bằng `npm run pgadmin:down`.
-`infra:down` chỉ dừng hạ tầng DB/cache; pgAdmin vẫn chạy nhưng không kết nối DB
-được cho tới khi bật lại hạ tầng.
-
-Để team truy cập `https://pgadmin.thanhlelmtp2006.id.vn`, làm theo
-[hướng dẫn pgAdmin cho team](../docBEMD/HUONG_DAN_PGADMIN_TEAM.md): Cloudflare
-Access theo email, route HTTP `pgadmin:8080`, tài khoản pgAdmin riêng và quyền
-PostgreSQL chỉ đọc. Tài khoản pgAdmin desktop cũ không tự chuyển sang bản web.
-
-## Kiểm tra các service vừa chuyển đổi
-
-Chạy build và test độc lập cho từng service:
+Các lệnh kiểm tra được chạy trực tiếp trong service cần sửa:
 
 ```bash
-for service in chat user todo workschedule; do
-  (cd "$service" && npm run lint && npm test -- --runInBand && npm run build)
-done
+npm run lint
+npm test -- --runInBand
+npm run build
 ```
 
-## Chạy toàn bộ bằng Docker
+Đọc `src/main.ts` → `src/app.module.ts` → `src/core/core.module.ts` →
+`src/modules/<nghiệp-vụ>/`. `COMMON.md` của từng service mô tả request, role,
+chữ ký nội bộ và response. Package `logger/packages/observability` cung cấp
+logger và request ID; đây là dependency runtime của các service.
 
-```bash
-cd backend
-npm run docker:up
-```
-
-Nếu đã có image trên máy và chỉ cần bật lại app, dùng `npm run docker:start`.
-Lệnh này dùng image backend hiện có, không build hoặc pull lại image backend;
-khi sửa code, dùng `npm run docker:up` để build bản mới.
-
-Dockerfile dùng frontend có sẵn trong BuildKit (Docker Engine 23+), tránh bước
-tải thêm `docker/dockerfile:1.7` từ Docker Hub. Build vẫn cần truy cập registry
-khi phải lấy base image hoặc dependency chưa có trong cache.
-
-Nếu registry báo `dial tcp [IPv6]:443: network is unreachable`, đó là lỗi kết nối
-tới registry; kiểm tra cả IPv4 bằng `curl -4 -I https://registry-1.docker.io/v2/`.
-HTTP 401 ở endpoint này là phản hồi xác thực bình thường, cho thấy đã kết nối
-được registry. Không cần chạy `docker:down` để thử build lại.
-
-Dừng toàn bộ stack:
-
-```bash
-npm run docker:down
-```
-
-Không chạy `npm run dev` cùng lúc với các container app vì chúng dùng cùng host
-port. Script dev sẽ tự dừng các container app trước khi chạy local.
-
-Nếu script báo port đang được sử dụng, hãy dừng các Run/Debug task hoặc terminal
-đang chạy service cũ trong IDE rồi chạy lại. Script không tự kill process local
-không thuộc phiên hiện tại để tránh làm mất công việc đang chạy.
-
-## Quy ước source backend
-
-Mỗi service là một repo độc lập. Bắt đầu đọc `main.ts` → `app.module.ts` →
-`core/core.module.ts` → `modules/<nghiệp-vụ>/`. Các file dùng xuyên module đặt
-trong `common/`, chia theo trách nhiệm: `config`, `decorators`, `enums`,
-`interfaces`, `middleware`, `guards`, `security`, `filters`, `logging`, `utils`.
-Chỉ tạo thư mục có file thực sự dùng; `http`/`pipes` chỉ có ở service cần đến.
-
-Luồng và các điểm khác nhau cần giữ của từng service nằm trong `COMMON.md`
-của repo tương ứng. Không ép đồng nhất role, chữ ký, metadata hay response
-format vì frontend và các service đang phụ thuộc vào chúng.
-
-Hiện trạng VPS và thứ tự phát hành được ghi trong
-[Logger deploy](logger/deploy/README.md). Payment chưa deploy, nhưng mã nguồn
-và migration vẫn được giữ để bảo toàn chức năng.
+Google OAuth, Cloudinary và Casso là tích hợp tùy chọn. Email/OTP và chat chữ
+không cần các tài khoản này. Payment khởi động bằng thông tin demo trong env,
+nhưng Gateway chưa có module Payment; FE căn tin dùng thanh toán tiền mặt.

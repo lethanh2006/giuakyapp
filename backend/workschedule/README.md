@@ -4,17 +4,17 @@ Nhân viên đăng ký lịch theo tháng, xem trạng thái duyệt và chấm 
 
 ## Yêu cầu MongoDB
 
-MongoDB phải chạy dạng **replica set** hoặc trên **Atlas**, kể cả môi trường phát triển. Service kiểm tra khả năng này lúc khởi động và báo lỗi rõ nếu kết nối tới MongoDB standalone.
+MongoDB phải chạy dạng **replica set** khi chạy local (Compose của dự án đã tự khởi tạo). Service kiểm tra khả năng này lúc khởi động và báo lỗi rõ nếu kết nối tới MongoDB standalone.
 
 Các thao tác tạo, gửi lại, sửa, xóa và duyệt lịch sử dụng transaction để lưu yêu cầu, các ngày đăng ký và chấm công từ xa cùng lúc. Nếu một bước lỗi, toàn bộ thay đổi được hoàn tác. Khi hai thao tác cùng sửa một yêu cầu, MongoDB thử lại transaction với dữ liệu mới nhất; lịch đã duyệt không bị một lần gửi lại thất bại ghi đè.
 
 Ví dụ cấu hình MongoDB local sau khi khởi tạo replica set tên `rs0`:
 
 ```dotenv
-MONGO_URL=mongodb://127.0.0.1:27017/nrapp?replicaSet=rs0
+MONGO_URL=mongodb://127.0.0.1:27017/nrapp?replicaSet=rs0&directConnection=true
 ```
 
-Với Atlas, dùng connection string của cluster đang được cấu hình. Không lưu tài khoản hoặc mật khẩu thật vào repository.
+Chạy `npm run setup` rồi `npm run dev:backend` từ thư mục gốc; xem [hướng dẫn local](../../README.md).
 
 ## Chuyển dữ liệu lịch tuần sang luồng tháng
 

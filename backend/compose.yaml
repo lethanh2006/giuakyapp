@@ -1,425 +1,88 @@
-name: ${COMPOSE_PROJECT_NAME:-nrapp-backend}
-
-x-app: &app
-  init: true
-  restart: "no"
-  profiles: ["app"]
-  networks:
-    - backend
-  security_opt:
-    - no-new-privileges:true
-  logging: &default-logging
-    driver: local
-    options:
-      max-size: 10m
-      max-file: "3"
-
-x-logging-environment: &logging-environment
-  LOG_FORMAT: json
-  DEPLOYMENT_ENVIRONMENT: production
-
-x-app-healthcheck: &app-healthcheck
-  test:
-    - CMD
-    - node
-    - -e
-    - "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
-  interval: 10s
-  timeout: 5s
-  retries: 10
-  start_period: 20s
-
-x-mongo-app-healthcheck: &mongo-app-healthcheck
-  test:
-    - CMD
-    - node
-    - -e
-    - "fetch('http://127.0.0.1:' + process.env.PORT + '/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
-  interval: 10s
-  timeout: 5s
-  retries: 10
-  start_period: 20s
+# Only local development infrastructure runs in Docker.
+# Start the NestJS services on the host with `npm run dev`.
+name: ${COMPOSE_PROJECT_NAME:-nrapp-local-dev}
 
 services:
+  mongo:
+    image: mongo:7.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "127.0.0.1:${MONGO_HOST_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      # Transactions require a replica set, even on a single local node.
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status(); } catch (error) { if (error.code !== 94) throw error; rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }); } if (!db.hello().isWritablePrimary) quit(1);"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+
   redis:
     image: redis:7.4.10-alpine
-    restart: unless-stopped
-    command:
-      - redis-server
-      - --appendonly
-      - "yes"
-      - --save
-      - "60"
-      - "1"
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - backend
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
-      start_period: 5s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
 
   rabbitmq:
     image: rabbitmq:4.2.7-management-alpine
-    restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER in backend/.env}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in backend/.env}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-nrapp}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-nrapp-local-rabbitmq}
     ports:
       - "127.0.0.1:${RABBITMQ_AMQP_HOST_PORT:-5672}:5672"
       - "127.0.0.1:${RABBITMQ_UI_HOST_PORT:-15672}:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-      - type: bind
-        source: ./docker/rabbitmq-enabled-plugins
-        target: /etc/rabbitmq/enabled_plugins
-        read_only: true
-        bind:
-          create_host_path: false
-    networks:
-      - backend
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 15s
-      timeout: 30s
-      retries: 6
-      start_period: 60s
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
+      interval: 10s
+      timeout: 15s
+      retries: 12
+      start_period: 20s
 
   payment-postgres:
     image: postgres:17-alpine
-    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${PAYMENT_POSTGRES_USER:?Set PAYMENT_POSTGRES_USER in backend/.env}
-      POSTGRES_PASSWORD: ${PAYMENT_POSTGRES_PASSWORD:?Set PAYMENT_POSTGRES_PASSWORD in backend/.env}
-      POSTGRES_DB: ${PAYMENT_POSTGRES_DB:?Set PAYMENT_POSTGRES_DB in backend/.env}
+      POSTGRES_USER: ${PAYMENT_POSTGRES_USER:-nrapp}
+      POSTGRES_PASSWORD: ${PAYMENT_POSTGRES_PASSWORD:-nrapp-local-postgres}
+      POSTGRES_DB: ${PAYMENT_POSTGRES_DB:-nrapp_payment}
     ports:
       - "127.0.0.1:${PAYMENT_POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
       - payment_postgres_data:/var/lib/postgresql/data
-    networks:
-      - backend
     healthcheck:
-      test:
-        - CMD-SHELL
-        - pg_isready -U "${PAYMENT_POSTGRES_USER}" -d "${PAYMENT_POSTGRES_DB}"
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
 
-  pgadmin:
-    image: dpage/pgadmin4:9.17
-    profiles: ["admin"]
-    restart: unless-stopped
-    environment:
-      # Empty values fail at pgAdmin startup, without blocking other profiles.
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-}
-      PGADMIN_DISABLE_POSTFIX: "true"
-      PGADMIN_LISTEN_PORT: "8080"
-      PGADMIN_CONFIG_SERVER_MODE: "True"
-      PGADMIN_CONFIG_PROXY_X_PROTO_COUNT: "1"
+  mailpit:
+    image: axllent/mailpit:v1.27
     ports:
-      - "127.0.0.1:${PGADMIN_HOST_PORT:-5050}:8080"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - backend
-    depends_on:
-      payment-postgres:
-        condition: service_healthy
+      - "127.0.0.1:${MAILPIT_SMTP_HOST_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_HOST_PORT:-8025}:8025"
     healthcheck:
-      test: ["CMD", "/venv/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/misc/ping', timeout=5)"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-
-  auth:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: auth
-    command: ["npm", "run", "start:prod"]
-    env_file:
-      - ./auth/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "4000"
-      REDIS_URL: redis://redis:6379
-      Rabbitmq_Host: rabbitmq
-      Rabbitmq_Port: "5672"
-      Rabbitmq_Username: ${RABBITMQ_USER}
-      Rabbitmq_Password: ${RABBITMQ_PASSWORD}
-      USER_SERVICE: http://user:5000
-    ports:
-      - "127.0.0.1:${AUTH_HOST_PORT:-4000}:4000"
-    depends_on:
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck: *app-healthcheck
-
-  user:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: user
-    command: ["npm", "run", "start:prod"]
-    env_file:
-      - ./user/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "5000"
-      Rabbitmq_Host: rabbitmq
-      Rabbitmq_Port: "5672"
-      Rabbitmq_Username: ${RABBITMQ_USER}
-      Rabbitmq_Password: ${RABBITMQ_PASSWORD}
-      USER_INTERNAL_SECRET: ${USER_INTERNAL_SECRET:?Set USER_INTERNAL_SECRET in backend/.env}
-    ports:
-      - "127.0.0.1:${USER_HOST_PORT:-5000}:5000"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    healthcheck: *mongo-app-healthcheck
-
-  mail:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: mail
-    env_file:
-      - ./mail/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "5001"
-      Rabbitmq_Host: rabbitmq
-      Rabbitmq_Port: "5672"
-      Rabbitmq_Username: ${RABBITMQ_USER}
-      Rabbitmq_Password: ${RABBITMQ_PASSWORD}
-    ports:
-      - "127.0.0.1:${MAIL_HOST_PORT:-5001}:5001"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    healthcheck: *app-healthcheck
-
-  chat:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: chat
-    command: ["npm", "run", "start:prod"]
-    env_file:
-      - ./chat/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "5002"
-      USER_SERVICE: http://user:5000
-      CHAT_INTERNAL_SECRET: ${CHAT_INTERNAL_SECRET:?Set CHAT_INTERNAL_SECRET in backend/.env}
-    ports:
-      - "127.0.0.1:${CHAT_HOST_PORT:-5002}:5002"
-    depends_on:
-      user:
-        condition: service_healthy
-    healthcheck: *mongo-app-healthcheck
-
-  todo:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: todo
-    command: ["npm", "run", "start:prod"]
-    env_file:
-      - ./todo/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "5003"
-      USER_SERVICE_URL: http://user:5000
-      USER_INTERNAL_SECRET: ${USER_INTERNAL_SECRET:?Set USER_INTERNAL_SECRET in backend/.env}
-      TODO_INTERNAL_SECRET: ${TODO_INTERNAL_SECRET:?Set TODO_INTERNAL_SECRET in backend/.env}
-    ports:
-      - "127.0.0.1:${TODO_HOST_PORT:-5003}:5003"
-    depends_on:
-      user:
-        condition: service_healthy
-    healthcheck: *mongo-app-healthcheck
-
-  workschedule:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: workschedule
-    command: ["npm", "run", "start:prod"]
-    env_file:
-      - ./workschedule/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "5004"
-      USER_SERVICE_URL: http://user:5000
-      USER_INTERNAL_SECRET: ${USER_INTERNAL_SECRET:?Set USER_INTERNAL_SECRET in backend/.env}
-      WORKSCHEDULE_INTERNAL_SECRET: ${WORKSCHEDULE_INTERNAL_SECRET:?Set WORKSCHEDULE_INTERNAL_SECRET in backend/.env}
-    ports:
-      - "127.0.0.1:${WORKSCHEDULE_HOST_PORT:-5004}:5004"
-    depends_on:
-      user:
-        condition: service_healthy
-    healthcheck: *mongo-app-healthcheck
-
-  canteen:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: canteen
-    command: ["npm", "run", "start:prod"]
-    env_file:
-      - ./canteen/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "5005"
-      REDIS_URL: redis://redis:6379
-      Rabbitmq_Host: rabbitmq
-      Rabbitmq_Port: "5672"
-      Rabbitmq_Username: ${RABBITMQ_USER}
-      Rabbitmq_Password: ${RABBITMQ_PASSWORD}
-      USER_SERVICE: http://user:5000
-      CANTEEN_INTERNAL_SECRET: ${CANTEEN_INTERNAL_SECRET:?Set CANTEEN_INTERNAL_SECRET in backend/.env}
-      CANTEEN_REQUIRE_SIGNATURE: "true"
-    ports:
-      - "127.0.0.1:${CANTEEN_HOST_PORT:-5005}:5005"
-    depends_on:
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      user:
-        condition: service_healthy
-    healthcheck: *app-healthcheck
-
-  payment:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: payment
-    command: ["npm", "run", "start:prod"]
-    env_file:
-      - ./payment/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "5006"
-      PAYMENT_DB_HOST: payment-postgres
-      PAYMENT_DB_PORT: "5432"
-      PAYMENT_DB_USER: ${PAYMENT_POSTGRES_USER}
-      PAYMENT_DB_PASSWORD: ${PAYMENT_POSTGRES_PASSWORD}
-      PAYMENT_DB_NAME: ${PAYMENT_POSTGRES_DB}
-      PAYMENT_DB_SSL: "false"
-      PAYMENT_DB_RUN_MIGRATIONS: "true"
-      PAYMENT_INTERNAL_SECRET: ${PAYMENT_INTERNAL_SECRET:?Set PAYMENT_INTERNAL_SECRET in backend/.env}
-      PAYMENT_REQUIRE_SIGNATURE: "true"
-      Rabbitmq_Host: rabbitmq
-      Rabbitmq_Port: "5672"
-      Rabbitmq_Username: ${RABBITMQ_USER}
-      Rabbitmq_Password: ${RABBITMQ_PASSWORD}
-    ports:
-      - "127.0.0.1:${PAYMENT_HOST_PORT:-5006}:5006"
-    depends_on:
-      payment-postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://127.0.0.1:5006/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
-      interval: 10s
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 20s
 
-  gateway:
-    <<: *app
-    build:
-      context: .
-      dockerfile: docker/node-service.Dockerfile
-      args:
-        SERVICE_DIR: gateway
-    command: ["npm", "run", "start:prod"]
-    env_file:
-      - ./gateway/.env
-    environment:
-      <<: *logging-environment
-      NODE_ENV: production
-      PORT: "3000"
-      AUTH_SERVICE_URL: http://auth:4000
-      USER_SERVICE_URL: http://user:5000
-      CHAT_SERVICE_URL: http://chat:5002
-      TODO_SERVICE_URL: http://todo:5003
-      WORKSCHEDULE_SERVICE_URL: http://workschedule:5004
-      CANTEEN_SERVICE_URL: http://canteen:5005
-      PAYMENT_SERVICE_URL: http://payment:5006
-      USER_INTERNAL_SECRET: ${USER_INTERNAL_SECRET:?Set USER_INTERNAL_SECRET in backend/.env}
-      CANTEEN_INTERNAL_SECRET: ${CANTEEN_INTERNAL_SECRET:?Set CANTEEN_INTERNAL_SECRET in backend/.env}
-      PAYMENT_INTERNAL_SECRET: ${PAYMENT_INTERNAL_SECRET:?Set PAYMENT_INTERNAL_SECRET in backend/.env}
-      CHAT_INTERNAL_SECRET: ${CHAT_INTERNAL_SECRET:?Set CHAT_INTERNAL_SECRET in backend/.env}
-      TODO_INTERNAL_SECRET: ${TODO_INTERNAL_SECRET:?Set TODO_INTERNAL_SECRET in backend/.env}
-      WORKSCHEDULE_INTERNAL_SECRET: ${WORKSCHEDULE_INTERNAL_SECRET:?Set WORKSCHEDULE_INTERNAL_SECRET in backend/.env}
-    ports:
-      - "${GATEWAY_BIND_IP:-0.0.0.0}:${GATEWAY_HOST_PORT:-3000}:3000"
-    healthcheck: *app-healthcheck
-
-networks:
-  backend:
-    driver: bridge
 volumes:
+  mongo_data:
   redis_data:
   rabbitmq_data:
   payment_postgres_data:
-  pgadmin_data:

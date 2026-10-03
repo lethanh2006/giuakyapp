@@ -15,6 +15,7 @@ describe('validateEnvironment', () => {
       SMTP_PORT: 465,
       SMTP_SECURE: true,
       SMTP_CONNECTION_TIMEOUT_MS: 3000,
+      SMTP_AUTH: true,
       MAIL_FROM: 'mailer@example.com',
       RABBITMQ_HOST: 'localhost',
       RABBITMQ_PORT: 5672,
@@ -48,6 +49,26 @@ describe('validateEnvironment', () => {
     expect(() =>
       validateEnvironment({ SMTP_USER: 'mailer@example.com' }),
     ).toThrow('SMTP_PASS');
+  });
+
+  it('cho phép Mailpit local không cần tài khoản SMTP', () => {
+    const config = validateEnvironment({
+      SMTP_HOST: '127.0.0.1',
+      SMTP_PORT: '1025',
+      SMTP_AUTH: 'false',
+      SMTP_SECURE: 'false',
+      MAIL_FROM: 'NRApp Local <noreply@nrapp.local>',
+    });
+
+    expect(config).toMatchObject({
+      SMTP_HOST: '127.0.0.1',
+      SMTP_PORT: 1025,
+      SMTP_AUTH: false,
+      SMTP_SECURE: false,
+      SMTP_USER: '',
+      SMTP_PASS: '',
+      MAIL_FROM: 'NRApp Local <noreply@nrapp.local>',
+    });
   });
 
   it('từ chối port không hợp lệ', () => {

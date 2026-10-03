@@ -4,198 +4,102 @@ import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
+import { parseEnv } from "node:util";
 
 const backendDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const skipInfra = process.argv.includes("--skip-infra");
-
 const services = [
-  {
-    name: "auth",
-    script: "start:dev",
-    portKey: "AUTH_HOST_PORT",
-    defaultPort: "4000",
-  },
-  {
-    name: "user",
-    script: "dev",
-    portKey: "USER_HOST_PORT",
-    defaultPort: "5000",
-  },
-  {
-    name: "mail",
-    script: "dev",
-    portKey: "MAIL_HOST_PORT",
-    defaultPort: "5001",
-  },
-  {
-    name: "chat",
-    script: "dev",
-    portKey: "CHAT_HOST_PORT",
-    defaultPort: "5002",
-  },
-  {
-    name: "todo",
-    script: "dev",
-    portKey: "TODO_HOST_PORT",
-    defaultPort: "5003",
-  },
+  { name: "auth", portKey: "AUTH_HOST_PORT", defaultPort: "4000" },
+  { name: "user", portKey: "USER_HOST_PORT", defaultPort: "5000" },
+  { name: "mail", portKey: "MAIL_HOST_PORT", defaultPort: "5001" },
+  { name: "chat", portKey: "CHAT_HOST_PORT", defaultPort: "5002" },
+  { name: "todo", portKey: "TODO_HOST_PORT", defaultPort: "5003" },
   {
     name: "workschedule",
-    script: "dev",
     portKey: "WORKSCHEDULE_HOST_PORT",
     defaultPort: "5004",
   },
-  {
-    name: "canteen",
-    script: "start:dev",
-    portKey: "CANTEEN_HOST_PORT",
-    defaultPort: "5005",
-  },
-  {
-    name: "payment",
-    script: "start:dev",
-    portKey: "PAYMENT_HOST_PORT",
-    defaultPort: "5006",
-  },
-  {
-    name: "gateway",
-    script: "dev",
-    portKey: "GATEWAY_HOST_PORT",
-    defaultPort: "3000",
-  },
+  { name: "canteen", portKey: "CANTEEN_HOST_PORT", defaultPort: "5005" },
+  { name: "payment", portKey: "PAYMENT_HOST_PORT", defaultPort: "5006" },
+  { name: "gateway", portKey: "GATEWAY_HOST_PORT", defaultPort: "3000" },
 ];
 
-function parseEnv(filePath) {
-  const values = {};
-  if (!existsSync(filePath)) return values;
-
-  for (const rawLine of readFileSync(filePath, "utf8").split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const separator = line.indexOf("=");
-    if (separator < 1) continue;
-
-    const key = line.slice(0, separator).trim();
-    let value = line.slice(separator + 1).trim();
-    if (
-      value.length >= 2 &&
-      ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'")))
-    ) {
-      value = value.slice(1, -1);
-    }
-    values[key] = value;
-  }
-
-  return values;
+function readEnv(filePath) {
+  return existsSync(filePath) ? parseEnv(readFileSync(filePath, "utf8")) : {};
 }
 
-function runDocker(args) {
-  const result = spawnSync("docker", ["compose", ...args], {
-    cwd: backendDir,
-    stdio: "inherit",
-  });
-
-  if (result.error) {
-    console.error(`Không chạy được Docker Compose: ${result.error.message}`);
-    process.exit(1);
-  }
-  if (result.status !== 0) process.exit(result.status ?? 1);
+function fail(message) {
+  console.error(message);
+  process.exit(1);
 }
 
-function runObservability(args) {
-  const result = spawnSync(
-    process.execPath,
-    ["scripts/observability-compose.mjs", ...args],
-    { cwd: backendDir, stdio: "inherit" },
-  );
-
-  if (result.error) {
-    console.error(
-      `Không chạy được observability stack: ${result.error.message}`,
-    );
-    process.exit(1);
-  }
-  if (result.status !== 0) process.exit(result.status ?? 1);
+if (!existsSync(resolve(backendDir, ".env"))) {
+  fail("Chưa có backend/.env. Chạy npm run setup tại thư mục gốc trước.");
 }
-
-function pipeLogs(stream, serviceName, output) {
-  const lines = createInterface({ input: stream });
-  lines.on("line", (line) => output.write(`[${serviceName}] ${line}\n`));
-}
-
-function isPortAvailable(portNumber) {
-  return new Promise((resolvePort) => {
-    const server = createServer();
-    server.unref();
-    server.once("error", () => resolvePort(false));
-    server.listen({ host: "127.0.0.1", port: portNumber }, () => {
-      server.close(() => resolvePort(true));
-    });
-  });
-}
-
-const rootEnv = {
-  ...parseEnv(resolve(backendDir, ".env")),
-  ...parseEnv(resolve(backendDir, "logger/.env")),
-  ...process.env,
-};
-for (const requiredKey of [
+const rootEnv = { ...readEnv(resolve(backendDir, ".env")), ...process.env };
+for (const key of [
+  "JWT_SECRET",
   "RABBITMQ_USER",
   "RABBITMQ_PASSWORD",
   "PAYMENT_POSTGRES_USER",
   "PAYMENT_POSTGRES_PASSWORD",
   "PAYMENT_POSTGRES_DB",
+  "AUTH_INTERNAL_SECRET",
+  "USER_INTERNAL_SECRET",
+  "CHAT_INTERNAL_SECRET",
+  "TODO_INTERNAL_SECRET",
+  "WORKSCHEDULE_INTERNAL_SECRET",
   "CANTEEN_INTERNAL_SECRET",
   "PAYMENT_INTERNAL_SECRET",
 ]) {
-  if (!rootEnv[requiredKey]) {
-    console.error(`Thiếu ${requiredKey} trong backend/.env`);
-    process.exit(1);
+  if (!rootEnv[key]) fail(`Thiếu ${key} trong backend/.env`);
+}
+for (const { name } of services) {
+  if (!existsSync(resolve(backendDir, name, ".env"))) {
+    fail(
+      `Chưa có backend/${name}/.env. Chạy npm run setup tại thư mục gốc trước.`,
+    );
+  }
+  if (
+    !existsSync(
+      resolve(backendDir, name, "node_modules/@nestjs/cli/bin/nest.js"),
+    )
+  ) {
+    fail(
+      `Chưa cài dependencies cho ${name}. Chạy npm run setup tại thư mục gốc trước.`,
+    );
   }
 }
 
-if (!skipInfra) {
-  // App containers and local apps use the same host ports, so they cannot run together.
-  runDocker(["stop", ...services.map(({ name }) => name)]);
-  runObservability(["up", "-d", "--wait"]);
-  runDocker(["up", "-d", "--wait", "redis", "rabbitmq", "payment-postgres"]);
-}
-
 const port = (key, fallback) => rootEnv[key] || fallback;
-
 const configuredPorts = services.map((service) => ({
   ...service,
   port: Number(port(service.portKey, service.defaultPort)),
 }));
-const invalidPorts = configuredPorts.filter(
-  ({ port: portNumber }) =>
-    !Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535,
-);
-if (invalidPorts.length > 0) {
-  console.error(
-    "Port không hợp lệ trong backend/.env: " +
-      invalidPorts.map(({ portKey }) => portKey).join(", "),
-  );
-  process.exit(1);
+if (
+  configuredPorts.some(
+    ({ port: value }) => !Number.isInteger(value) || value < 1 || value > 65535,
+  )
+) {
+  fail("Port service trong backend/.env phải là số nguyên từ 1 đến 65535.");
+}
+if (
+  new Set(configuredPorts.map(({ port: value }) => value)).size !==
+  services.length
+) {
+  fail("Các *_HOST_PORT của service trong backend/.env phải khác nhau.");
 }
 
-const duplicatePorts = configuredPorts.filter(
-  (service, index, all) =>
-    all.findIndex(({ port: portNumber }) => portNumber === service.port) !==
-    index,
-);
-if (duplicatePorts.length > 0) {
-  console.error(
-    "Các service đang được cấu hình trùng port: " +
-      duplicatePorts
-        .map(({ name, port: portNumber }) => `${name}:${portNumber}`)
-        .join(", "),
-  );
-  process.exit(1);
+function isPortAvailable(value) {
+  return new Promise((resolvePort) => {
+    const server = createServer();
+    server.unref();
+    server.once("error", () => resolvePort(false));
+    server.listen({ host: "127.0.0.1", port: value }, () => {
+      server.close(() => resolvePort(true));
+    });
+  });
 }
-
 const availability = await Promise.all(
   configuredPorts.map(async (service) => ({
     ...service,
@@ -203,25 +107,38 @@ const availability = await Promise.all(
   })),
 );
 const busyPorts = availability.filter(({ available }) => !available);
-if (busyPorts.length > 0) {
-  console.error(
-    "Không thể chạy local vì port đang được sử dụng: " +
-      busyPorts
-        .map(({ name, port: portNumber }) => `${name}:${portNumber}`)
-        .join(", "),
+if (busyPorts.length) {
+  fail(
+    "Port đang được sử dụng: " +
+      busyPorts.map(({ name, port: value }) => `${name}:${value}`).join(", ") +
+      ". Dừng tiến trình cũ hoặc đổi *_HOST_PORT trong backend/.env.",
   );
-  console.error(
-    "Hãy dừng tiến trình cũ hoặc đổi *_HOST_PORT trong backend/.env.",
-  );
-  process.exit(1);
+}
+
+if (!skipInfra) {
+  const result = spawnSync("docker", ["compose", "up", "-d", "--wait"], {
+    cwd: backendDir,
+    env: rootEnv,
+    stdio: "inherit",
+  });
+  if (result.error)
+    fail(`Không chạy được Docker Compose: ${result.error.message}`);
+  if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
 const sharedLocalEnv = {
+  NODE_ENV: "development",
+  MONGO_URL: `mongodb://127.0.0.1:${port("MONGO_HOST_PORT", "27017")}/${rootEnv.MONGO_DB_NAME || "nrapp"}?replicaSet=rs0&directConnection=true`,
+  MONGO_DB_NAME: rootEnv.MONGO_DB_NAME || "nrapp",
   REDIS_URL: `redis://127.0.0.1:${port("REDIS_HOST_PORT", "6379")}`,
   Rabbitmq_Host: "127.0.0.1",
   Rabbitmq_Port: port("RABBITMQ_AMQP_HOST_PORT", "5672"),
   Rabbitmq_Username: rootEnv.RABBITMQ_USER,
   Rabbitmq_Password: rootEnv.RABBITMQ_PASSWORD,
+  RABBITMQ_HOST: "127.0.0.1",
+  RABBITMQ_PORT: port("RABBITMQ_AMQP_HOST_PORT", "5672"),
+  RABBITMQ_USER: rootEnv.RABBITMQ_USER,
+  RABBITMQ_PASSWORD: rootEnv.RABBITMQ_PASSWORD,
   PAYMENT_DB_HOST: "127.0.0.1",
   PAYMENT_DB_PORT: port("PAYMENT_POSTGRES_HOST_PORT", "5433"),
   PAYMENT_DB_USER: rootEnv.PAYMENT_POSTGRES_USER,
@@ -229,10 +146,14 @@ const sharedLocalEnv = {
   PAYMENT_DB_NAME: rootEnv.PAYMENT_POSTGRES_DB,
   PAYMENT_DB_SSL: "false",
   PAYMENT_DB_RUN_MIGRATIONS: "true",
-  CANTEEN_INTERNAL_SECRET: rootEnv.CANTEEN_INTERNAL_SECRET,
   CANTEEN_REQUIRE_SIGNATURE: "true",
-  PAYMENT_INTERNAL_SECRET: rootEnv.PAYMENT_INTERNAL_SECRET,
   PAYMENT_REQUIRE_SIGNATURE: "true",
+  SMTP_HOST: "127.0.0.1",
+  SMTP_PORT: port("MAILPIT_SMTP_HOST_PORT", "1025"),
+  SMTP_AUTH: "false",
+  SMTP_SECURE: "false",
+  SMTP_USER: "",
+  SMTP_PASS: "",
   AUTH_SERVICE_URL: `http://127.0.0.1:${port("AUTH_HOST_PORT", "4000")}`,
   USER_SERVICE: `http://127.0.0.1:${port("USER_HOST_PORT", "5000")}`,
   USER_SERVICE_URL: `http://127.0.0.1:${port("USER_HOST_PORT", "5000")}`,
@@ -246,62 +167,120 @@ const sharedLocalEnv = {
 };
 
 const children = new Map();
+// The CLI can exit before its application children. Retain each group until
+// shutdown finishes so those descendants still receive the forced stop.
+const processGroups = new Set();
 let shuttingDown = false;
+let exitCode = 0;
+
+function stopProcessGroup(pid, signal) {
+  if (process.platform === "win32") {
+    const result = spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
+      stdio: "ignore",
+    });
+    if (result.status === 0) processGroups.delete(pid);
+    return;
+  }
+  try {
+    // Stop the Nest CLI and its compiler/application subprocesses together.
+    process.kill(-pid, signal);
+  } catch (error) {
+    if (error.code === "ESRCH") processGroups.delete(pid);
+    else console.error(error.message);
+  }
+}
+
+function processGroupExists(pid) {
+  try {
+    process.kill(process.platform === "win32" ? pid : -pid, 0);
+    return true;
+  } catch (error) {
+    return error.code !== "ESRCH";
+  }
+}
 
 function shutdown(signal = "SIGTERM") {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log("\nĐang dừng các service local...");
-  for (const child of children.values()) child.kill(signal);
-
+  for (const pid of processGroups) stopProcessGroup(pid, signal);
+  if (!processGroups.size) return;
+  const cleanupTimer = setInterval(() => {
+    for (const pid of processGroups) {
+      if (!processGroupExists(pid)) processGroups.delete(pid);
+    }
+    if (!processGroups.size) {
+      clearTimeout(forceTimer);
+      clearInterval(cleanupTimer);
+    }
+  }, 100);
+  // Keep this timer referenced even after every CLI has exited: an application
+  // descendant may still be alive and ignoring the graceful stop signal.
   const forceTimer = setTimeout(() => {
-    for (const child of children.values()) {
-      // `child.killed` chỉ cho biết signal trước đã được gửi, không có nghĩa
-      // tiến trình đã thoát. Map chỉ còn chứa các tiến trình chưa emit `exit`.
-      child.kill("SIGKILL");
-    }
+    for (const pid of processGroups) stopProcessGroup(pid, "SIGKILL");
+    processGroups.clear();
+    clearInterval(cleanupTimer);
   }, 5000);
-  forceTimer.unref();
 }
 
-for (const service of services) {
-  const child = spawn("npm", ["run", service.script], {
-    cwd: resolve(backendDir, service.name),
-    env: {
-      ...process.env,
-      ...sharedLocalEnv,
-      NODE_ENV: "development",
-      PORT: port(service.portKey, service.defaultPort),
-    },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-
-  children.set(service.name, child);
-  pipeLogs(child.stdout, service.name, process.stdout);
-  pipeLogs(child.stderr, service.name, process.stderr);
-
-  child.on("error", (error) => {
-    console.error(`[${service.name}] Không khởi động được: ${error.message}`);
-    shutdown();
-  });
-  child.on("exit", (code, signal) => {
-    children.delete(service.name);
-    if (!shuttingDown && code !== 0) {
-      console.error(
-        `[${service.name}] Đã dừng (code=${code}, signal=${signal ?? "none"})`,
-      );
-    }
-    if (children.size === 0) process.exitCode = code ?? 0;
-  });
+function pipeLogs(stream, name, output) {
+  const lines = createInterface({ input: stream });
+  lines.on("line", (line) => output.write(`[${name}] ${line}\n`));
 }
-
-console.log(
-  "Các service local đang khởi động. Gateway: http://localhost:" +
-    port("GATEWAY_HOST_PORT", "3000"),
-);
-console.log(
-  "Nhấn Ctrl+C để dừng app; Redis, RabbitMQ và PostgreSQL vẫn được giữ lại.",
-);
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
+for (const service of services) {
+  const serviceDir = resolve(backendDir, service.name);
+  const child = spawn(
+    process.execPath,
+    [
+      resolve(serviceDir, "node_modules/@nestjs/cli/bin/nest.js"),
+      "start",
+      "--watch",
+    ],
+    {
+      cwd: serviceDir,
+      env: {
+        ...readEnv(resolve(serviceDir, ".env")),
+        ...rootEnv,
+        ...sharedLocalEnv,
+        PORT: port(service.portKey, service.defaultPort),
+      },
+      detached: process.platform !== "win32",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  children.set(service.name, child);
+  if (child.pid) processGroups.add(child.pid);
+  pipeLogs(child.stdout, service.name, process.stdout);
+  pipeLogs(child.stderr, service.name, process.stderr);
+  child.on("error", (error) => {
+    console.error(`[${service.name}] Không khởi động được: ${error.message}`);
+    children.delete(service.name);
+    exitCode = 1;
+    shutdown();
+    if (!children.size) process.exitCode = exitCode;
+  });
+  child.on("exit", (code, signal) => {
+    children.delete(service.name);
+    if (!shuttingDown) {
+      console.error(
+        `[${service.name}] Đã dừng (code=${code}, signal=${signal ?? "none"})`,
+      );
+      exitCode = code || 1;
+      shutdown();
+    }
+    if (!children.size) process.exitCode = exitCode;
+  });
+}
+
+console.log(
+  `Các service local đang khởi động. Gateway: http://localhost:${port("GATEWAY_HOST_PORT", "3000")}`,
+);
+console.log(
+  `Hộp thư OTP local: http://localhost:${port("MAILPIT_UI_HOST_PORT", "8025")}`,
+);
+console.log(
+  "Nhấn Ctrl+C để dừng app. Dừng hạ tầng bằng npm run infra:down; dữ liệu được giữ trong Docker volumes.",
+);

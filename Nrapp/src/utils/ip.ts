@@ -55,6 +55,12 @@ function getExpoHost() {
 }
 
 function getDevelopmentUrl() {
+  // The browser runs on the development machine, even when Metro advertises
+  // another host. Native devices can use Metro's LAN host below.
+  if (Platform.OS === "web") {
+    return `http://localhost:${apiPort}${apiPath}`;
+  }
+
   const expoHost = getExpoHost();
 
   if (isAndroidEmulator()) {
@@ -66,11 +72,6 @@ function getDevelopmentUrl() {
 }
 
 const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-
-if (!configuredUrl && !__DEV__) {
-  throw new Error("EXPO_PUBLIC_API_URL must be configured for production builds");
-}
-
 const apiUrl = configuredUrl || getDevelopmentUrl();
 
 export const ipNR = removeTrailingSlash(apiUrl);

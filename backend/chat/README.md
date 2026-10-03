@@ -29,14 +29,14 @@ tracked for each user.
 ## Commands
 
 ```bash
-npm install
+npm ci
 npm run dev
 npm run lint
 npm test
 npm run build
-npm run start:prod
 ```
 
-Copy `.env.example` to `.env` and use the same `JWT_SECRET` as Auth and Gateway.
+Run `npm run setup` at the project root to generate matching secrets, then
+`npm run dev:backend` to start the local services. See [local onboarding](../../README.md).
 Image uploads retain the `chat-images` Cloudinary folder, JPG/JPEG/PNG/GIF
 allow-list and 800x800 `limit` transformation.

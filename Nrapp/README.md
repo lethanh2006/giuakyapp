@@ -1,116 +1,99 @@
-# Nrapp
+# Nrapp — frontend local
 
-Nrapp là ứng dụng Expo/React Native cho nền tảng vận hành nội bộ NRApp. Ứng dụng
-kết nối tới API Gateway NRApp để sử dụng xác thực, dữ liệu người dùng, chat
-realtime, công việc, gọi món căn tin, lịch làm việc, đơn nhân sự và chấm công
-QR.
+Ứng dụng Expo/React Native dùng API Gateway tại cổng `3000`, REST qua `/api`
+và chat Socket.IO qua `/socket.io` trên cùng Gateway.
 
-Ứng dụng đang được cấu hình ở version `1.0.4`, Android `versionCode` `6`. APK
-phát hành mới nhất có tại [trang GitHub Releases](https://github.com/lethanh2006/Nrapp/releases/latest).
+## Cài đặt lần đầu
 
-## Tài liệu
-
-- [Kiến trúc và luồng request](docs/kien-truc-va-luong-hoat-dong.md)
-- [Luồng chat realtime](docs/chat-flow.md)
-- [APK phát hành mới nhất](https://github.com/lethanh2006/Nrapp/releases/latest/download/Nrapp.apk)
-
-## Các nhóm chức năng
-
-- Đăng ký bằng email/mật khẩu và đăng nhập hai bước bằng OTP.
-- Đăng nhập Google, khôi phục phiên bằng refresh token và quản lý tài khoản.
-- Danh bạ người dùng và quản lý hồ sơ.
-- Chat realtime một-một qua REST và Socket.IO, bao gồm tải ảnh được hỗ trợ.
-- Tạo, giao, lọc, đổi trạng thái công việc và xem công việc cá nhân.
-- Xem thực đơn căn tin, gọi món theo bàn, xem lịch sử đơn và quản lý thực đơn,
-  đơn hàng, bàn ở khu admin. Hợp đồng hiện tại chỉ hỗ trợ thanh toán tiền mặt.
-- Lịch làm việc theo tháng, đơn nghỉ/đi muộn/tăng ca và các đơn nhân sự liên
-  quan, quản lý chính sách, báo cáo và chấm công QR.
-
-Điều hướng admin và user được tách riêng trong cây Expo Router. Backend vẫn là
-nơi quyết định quyền; việc ẩn một màn hình trên app không thay thế kiểm tra
-quyền.
-
-## Cấu trúc source
-
-```text
-app/
-├── (auth)/                 # đăng ký, đăng nhập, xác thực OTP
-└── (main)/
-    ├── admin/              # điều hướng và màn hình admin
-    └── user/               # điều hướng và màn hình user
-
-src/features/<feature>/
-├── admin/                  # màn hình, UI và hook cho admin
-├── user/                   # màn hình và UI cho user
-└── shared/                 # model hoặc tiện ích trung lập với role
-
-src/services/               # REST, Socket.IO và type theo domain
-src/application/            # role, kiểm tra quyền và hằng số route
-src/shared/                 # UI, hook và model thực sự dùng chung
-src/utils/                  # Axios, URL Gateway và xử lý lỗi HTTP
-```
-
-Cấu hình ESLint kiểm tra ranh giới import giữa admin/user/shared. Hãy đặt lời
-gọi nghiệp vụ trong `src/services`, giữ file route mỏng và không chuyển màn hình
-riêng của một role vào `shared`.
-
-## Cấu hình
-
-Sao chép `.env.example` thành `.env.local`:
-
-```env
-EXPO_PUBLIC_API_URL=http://YOUR_GATEWAY_HOST:3000/api
-EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
-```
-
-Các biến tùy chọn gồm `EXPO_PUBLIC_API_TIMEOUT_MS`,
-`EXPO_PUBLIC_SOCKET_URL`, `EXPO_PUBLIC_SOCKET_PATH`, `EXPO_PUBLIC_API_PORT` và
-`EXPO_PUBLIC_API_PATH`. Giá trị `EXPO_PUBLIC_*` được đóng gói vào client và chỉ
-được chứa cấu hình công khai; không đặt secret vào đây.
-
-Hãy dùng URL Gateway mà thiết bị có thể truy cập. Android Emulator chỉ dùng
-`10.0.2.2` thông qua các biến host/port dự phòng khi chưa cấu hình URL API đầy
-đủ. Thiết bị thật cần địa chỉ Gateway có thể truy cập qua LAN hoặc tunnel.
-
-## Chạy local
+Dùng Node.js 22 LTS và npm. Backend phải chạy trước theo [hướng dẫn tại thư mục gốc](../README.md).
+Từ thư mục `Nrapp`, chạy:
 
 ```bash
 npm ci
-cp .env.example .env.local
-npm start
+cp .env.example .env
 ```
 
-Các script có sẵn:
+PowerShell trên Windows: dùng `Copy-Item .env.example .env` thay cho `cp`.
+Mỗi thành viên có `.env` riêng; Git chỉ lưu `.env.example`.
+Nếu máy đã có `.env.local` hoặc `.env.development.local` cũ, xóa hoặc đổi tên
+để chúng không ghi đè cấu hình local mới.
+
+## Chạy trên máy tính
+
+Chọn một trong các lệnh:
 
 ```bash
-npm run android
-npm run android:lan
-npm run android:tunnel
-npm run ios
-npm run web
+npm run web      # Trình duyệt: http://localhost:8081
+npm run android  # Android Emulator đã mở từ Android Studio
+npm run ios      # iOS Simulator, cần macOS và Xcode
+```
+
+Để trống `EXPO_PUBLIC_API_URL` trong `.env` để ứng dụng tự chọn địa chỉ:
+
+| Nơi mở ứng dụng | REST Gateway |
+| --- | --- |
+| Web trên máy chạy BE | `http://localhost:3000/api` |
+| Android Emulator của Android Studio | `http://10.0.2.2:3000/api` |
+| iOS Simulator với `npm run ios` | `http://localhost:3000/api` |
+
+`npm start` mở Metro ở localhost; chọn nền tảng bằng phím `w`, `a` hoặc `i`.
+Nếu cổng `8081` đã được dùng, Expo sẽ đề nghị cổng khác. Lệnh Android/iOS dùng
+Expo Go; hãy cài bản Expo Go tương thích SDK 54 của dự án theo
+[hướng dẫn Expo](https://expo.dev/go).
+
+## Chạy trên điện thoại cùng Wi-Fi
+
+1. Lấy IPv4 LAN của máy chạy BE, ví dụ `192.168.1.20` (`ipconfig` trên Windows,
+   `ip addr` trên Linux hoặc `ipconfig getifaddr en0` trên macOS).
+2. Sửa `Nrapp/.env`:
+
+   ```env
+   EXPO_PUBLIC_API_URL=http://192.168.1.20:3000/api
+   EXPO_PUBLIC_SOCKET_URL=
+   ```
+
+3. Chạy `npm run start:lan`, rồi mở Expo Go trên điện thoại và quét QR.
+4. Cho phép firewall máy tính nhận kết nối trong mạng riêng tại cổng `3000`
+   và cổng Metro đang chạy (`8081` mặc định). BE phải lắng nghe trên `0.0.0.0`.
+
+Điện thoại và máy tính phải cùng mạng và mạng không bật cách ly thiết bị.
+Kiểm tra từ điện thoại bằng `http://192.168.1.20:3000/health` trước khi mở app.
+`localhost` trên điện thoại là chính điện thoại, nên cần IP LAN của máy BE.
+Sau khi đổi `.env`, dừng Expo và chạy lại lệnh với `-- --clear` để nạp cấu hình mới.
+
+## Đăng nhập local và cấu hình
+
+Dùng đăng ký/đăng nhập email, mật khẩu và OTP với backend local.
+Chat văn bản hoạt động với backend local. Gửi ảnh cần Cloudinary của nhóm
+được cấu hình trong backend; xem [hướng dẫn backend](../backend/README.md).
+Google Sign-In chỉ hiện khi có `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` của nhóm và
+native build phù hợp. Mặc định biến này để trống; không dùng Google project
+của repo cũ. Google Sign-In cần native module riêng nên không chạy trong
+Expo Go; tham khảo [tài liệu Expo](https://docs.expo.dev/guides/google-authentication/).
+
+| Biến | Mặc định | Công dụng |
+| --- | --- | --- |
+| `EXPO_PUBLIC_API_URL` | trống | URL `/api` hoàn chỉnh; ưu tiên hơn tự chọn host |
+| `EXPO_PUBLIC_API_PORT` | `3000` | Cổng khi tự chọn host |
+| `EXPO_PUBLIC_API_PATH` | `/api` | Path REST khi tự chọn host |
+| `EXPO_PUBLIC_API_TIMEOUT_MS` | `10000` | Thời gian chờ HTTP (ms) |
+| `EXPO_PUBLIC_SOCKET_URL` | trống | Tự dùng origin của REST Gateway |
+| `EXPO_PUBLIC_SOCKET_PATH` | `/socket.io` | Path Socket.IO qua Gateway |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | trống | Public OAuth client ID, tùy chọn |
+
+Biến `EXPO_PUBLIC_*` được đóng gói vào ứng dụng và công khai; chỉ đặt URL hoặc
+public client ID, không đặt secret backend. Xem
+[cách Expo đọc biến môi trường](https://docs.expo.dev/guides/environment-variables/).
+
+## Kiểm tra trước khi chia sẻ code
+
+```bash
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 ```
 
-`npm run reset-project` là script mẫu của Expo và không được chạy trên source
-đang phát triển.
+Tài liệu nghiệp vụ và kiến trúc:
 
-## Build và cập nhật bằng EAS
-
-Các profile build trong `eas.json`:
-
-- `preview`: APK Android nội bộ để kiểm thử trên thiết bị.
-- `production`: Android App Bundle để phát hành lên store.
-- `production-apk`: APK dùng channel production cho phân phối nội bộ.
-
-Ví dụ:
-
-```bash
-eas build --platform android --profile preview
-eas build --platform android --profile production
-```
-
-Workflow `eas-update.yml` chạy khi push vào `main` hoặc chạy thủ công. Workflow
-cần repository secret `EXPO_TOKEN`, cài dependency, chạy ESLint và kiểm tra
-TypeScript, sau đó publish bản cập nhật Android lên channel `production`. App
-kiểm tra update khi mở và dùng bundle đã cache nếu chưa thể tải bản mới ngay.
+- [Kiến trúc và luồng request](docs/kien-truc-va-luong-hoat-dong.md)
+- [Luồng chat realtime](docs/chat-flow.md)
+- [Lịch làm theo tháng](docs/lich-lam-theo-thang.md)

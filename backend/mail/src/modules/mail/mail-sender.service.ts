@@ -24,10 +24,12 @@ export class MailSenderService implements OnModuleDestroy {
       connectionTimeout: configService.getOrThrow<number>(
         'SMTP_CONNECTION_TIMEOUT_MS',
       ),
-      auth: {
-        user: configService.getOrThrow<string>('SMTP_USER'),
-        pass: configService.getOrThrow<string>('SMTP_PASS'),
-      },
+      auth: configService.getOrThrow<boolean>('SMTP_AUTH')
+        ? {
+            user: configService.getOrThrow<string>('SMTP_USER'),
+            pass: configService.getOrThrow<string>('SMTP_PASS'),
+          }
+        : undefined,
     });
   }
 

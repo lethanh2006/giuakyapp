@@ -2,20 +2,12 @@
   "name": "nrapp-backend",
   "private": true,
   "scripts": {
+    "setup": "node ../scripts/setup-local.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:apps": "node scripts/dev.mjs --skip-infra",
-    "infra:up": "npm run observability:up && docker compose up -d --wait redis rabbitmq payment-postgres",
-    "infra:down": "docker compose stop redis rabbitmq payment-postgres",
-    "pgadmin:up": "docker compose --profile admin up -d --wait pgadmin",
-    "pgadmin:down": "docker compose --profile admin stop pgadmin",
-    "pgadmin:logs": "docker compose --profile admin logs --tail=100 -f pgadmin",
-    "observability:config": "node scripts/observability-compose.mjs config --quiet",
-    "observability:up": "node scripts/observability-compose.mjs up -d --wait",
-    "observability:smoke": "node scripts/observability-smoke.mjs",
-    "observability:down": "node scripts/observability-compose.mjs down",
-    "docker:up": "npm run observability:up && docker compose --profile app up -d --build --wait",
-    "docker:start": "npm run observability:up && docker compose --profile app up -d --no-build --pull never --wait",
-    "docker:down": "docker compose --profile app --profile admin down"
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs --tail=100 -f"
   },
   "engines": {
     "node": ">=20.19"

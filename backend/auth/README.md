@@ -55,11 +55,11 @@ gửi; client không gọi trực tiếp các route này.
 Service cần MongoDB, Redis, RabbitMQ và User service nội bộ. MongoDB phải hỗ trợ
 transaction vì credential và outbox được ghi cùng nhau trong một transaction.
 
-Sao chép `.env.example` thành `.env` rồi điền giá trị theo môi trường:
+Cấu hình được tạo bởi `npm run setup` tại thư mục gốc. Các giá trị tham khảo:
 
 ```env
 PORT=4000
-MONGO_URL=mongodb://localhost:27017/nrapp
+MONGO_URL=mongodb://127.0.0.1:27017/nrapp?replicaSet=rs0&directConnection=true
 MONGO_DB_NAME=nrapp
 REDIS_URL=redis://localhost:6379
 USER_SERVICE=http://localhost:5000
@@ -81,16 +81,13 @@ Không commit credential hoặc JWT secret thật.
 
 ## Chạy local
 
-Service dùng package observability cục bộ của Logger. Đặt Logger cạnh repository
-này trong thư mục backend, cài dependency và bảo đảm MongoDB, Redis, RabbitMQ
-cùng User service đã sẵn sàng:
+Chạy `npm run setup` tại thư mục gốc của dự án để tạo env đồng bộ và cài
+dependency, sau đó `npm run dev:backend` để bật cả cụm. Xem
+[hướng dẫn local dev](../../README.md). Package log dùng chung đã nằm trong
+`backend/logger/packages/observability`.
 
-```bash
-npm ci --prefix ../logger/packages/observability --no-audit --no-fund
-npm ci
-cp .env.example .env
-npm run start:dev
-```
+Sau khi hạ tầng đã chạy, có thể mở terminal ở service này và chạy
+`npm run start:dev` để phát triển riêng.
 
 Các lệnh kiểm tra:
 
@@ -100,11 +97,3 @@ npm run format:check
 npm test
 npm run build
 ```
-
-## CI/CD
-
-`.github/workflows/ci.yml` dùng reusable workflow kiểm tra Node.js đã pin từ
-[Logger](https://github.com/lethanh2006/Logger). Push thành công vào nhánh mặc
-định sẽ kích hoạt `.github/workflows/cd.yml` và deploy đúng commit thông qua
-reusable VPS deployment workflow đã pin. Xem [.github/CI.md](.github/CI.md) để
-biết secret cần thiết và quy trình phát hành.

@@ -3,16 +3,14 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start --localhost",
-    "start:lan": "REACT_NATIVE_PACKAGER_HOSTNAME= expo start --lan",
-    "start:tunnel": "expo start --tunnel",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "node ./scripts/start-android.js",
-    "android:lan": "REACT_NATIVE_PACKAGER_HOSTNAME= expo start --lan --android",
-    "android:tunnel": "expo start --tunnel --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "lint": "eslint app src"
+    "start": "expo start --localhost --go",
+    "start:lan": "expo start --lan --go",
+    "android": "expo start --localhost --android --go",
+    "android:lan": "expo start --lan --android --go",
+    "ios": "expo start --localhost --ios --go",
+    "web": "expo start --localhost --web",
+    "lint": "eslint app src",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

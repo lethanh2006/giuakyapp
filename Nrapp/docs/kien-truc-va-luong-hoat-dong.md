@@ -878,13 +878,14 @@ backend trả về.
 
 `src/utils/ip.ts` áp dụng thứ tự:
 
-1. Production: bắt buộc có và dùng `EXPO_PUBLIC_API_URL`; thiếu biến thì throw
-   ngay khi module được load.
-2. Development trên mọi nền tảng: ưu tiên `EXPO_PUBLIC_API_URL` nếu có.
+1. Trên mọi nền tảng: ưu tiên `EXPO_PUBLIC_API_URL` nếu có.
+2. Không có URL cấu hình trên web: dùng `http://localhost:<port><path>`.
 3. Không có URL cấu hình trên Android Emulator: dùng
    `http://10.0.2.2:<port><path>`.
-4. Không có URL cấu hình trên nền tảng khác: dùng host URI của Expo, cuối cùng
-   fallback localhost.
+4. Không có URL cấu hình trên thiết bị native khác: dùng host URI của Expo,
+   cuối cùng fallback localhost. `npm run ios` mở Metro ở localhost, nên iOS
+   Simulator cũng dùng Gateway localhost. Điện thoại thật dùng IP LAN trong
+   `.env` và `npm run start:lan`.
 
 Biến môi trường:
 
@@ -901,8 +902,8 @@ Biến môi trường:
 sau khi bỏ path `/api`. `socketPath` lấy biến cấu hình hoặc `/socket.io`;
 URL được bỏ dấu `/` cuối và path được chuẩn hóa có đúng một dấu `/` đầu.
 
-`.env.example` là file mẫu; cấu hình riêng của máy nên đặt trong `.env.local`.
-`.gitignore` chỉ bỏ qua `.env*.local`, còn `.env` đang được Git theo dõi. Mọi
+`.env.example` là file mẫu; cấu hình riêng của máy đặt trong `.env`.
+`.gitignore` bỏ qua `.env` và `.env.*`, chỉ lưu `.env.example`. Mọi
 biến `EXPO_PUBLIC_*` đều được đóng gói vào client, tuyệt đối không chứa mật khẩu,
 API secret hoặc private key.
 

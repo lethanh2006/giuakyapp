@@ -7,7 +7,7 @@ import { Counter, Rate, Trend } from 'k6/metrics';
 // REST baseline for NRApp. Login/OTP, writes and Socket.IO are separate workloads.
 const baseUrl = (__ENV.BASE_URL || '').replace(/\/+$/, '');
 if (!/^https?:\/\//.test(baseUrl)) {
-  throw new Error('Set BASE_URL to the deployed API origin, e.g. https://api.example.com');
+  throw new Error('Set BASE_URL to the local Gateway origin, e.g. http://localhost:3000');
 }
 const tokens = new SharedArray('test access tokens', () => {
   const values = __ENV.TOKENS_FILE
