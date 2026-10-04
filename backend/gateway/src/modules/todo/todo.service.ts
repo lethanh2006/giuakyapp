@@ -109,6 +109,16 @@ export class TodoService {
     );
   }
 
+  async updateTaskPriority(id: string, priority: string, user: any) {
+    return this.forward(
+      'PATCH',
+      `/api/todo/${encodeURIComponent(id)}/priority`,
+      { priority },
+      null,
+      user,
+    );
+  }
+
   async getAllTasks(query: TaskQueryDto, user: any) {
     return this.forward('GET', '/api/todo', null, query, user);
   }

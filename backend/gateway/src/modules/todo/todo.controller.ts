@@ -25,6 +25,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { AssignTaskDto, UpdateTaskStatusDto } from './dto/assign-task.dto';
 import { MyTaskQueryDto, TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { UpdateTaskPriorityDto } from './dto/update-task-priority.dto';
 
 @ApiTags('Api Todo')
 @Controller('api/todo')
@@ -87,6 +88,21 @@ export class TodoController {
     @Req() req: any,
   ) {
     return this.todoService.updateTask(id, body, req.user);
+  }
+
+  @Patch(':id/priority')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CHEF)
+  @ApiOperation({
+    summary: 'Cập nhật mức độ ưu tiên của công việc (ADMIN, MANAGER, CHEF)',
+  })
+  @ApiParam({ name: 'id', example: '507f1f77bcf86cd799439011' })
+  async updatePriority(
+    @Param('id') id: string,
+    @Body() body: UpdateTaskPriorityDto,
+    @Req() req: any,
+  ) {
+    return this.todoService.updateTaskPriority(id, body.priority, req.user);
   }
 
   @Get()

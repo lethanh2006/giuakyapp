@@ -1,5 +1,5 @@
 export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
-export type TaskPriority = "low" | "medium" | "high";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
 export interface RelatedUser {
   _id: string;
@@ -68,7 +68,12 @@ export const STATUS_OPTIONS: TaskStatus[] = [
   "cancelled",
 ];
 
-export const PRIORITY_OPTIONS: TaskPriority[] = ["low", "medium", "high"];
+export const PRIORITY_OPTIONS: TaskPriority[] = [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+];
 
 export const ASSIGNEE_STATUS_TRANSITIONS: Readonly<
   Record<TaskStatus, readonly TaskStatus[]>
@@ -158,5 +163,12 @@ export const PRIORITY_MAP: Record<
     bgClass: "bg-rose-50",
     borderClass: "border-rose-200",
     icon: "arrow-up-outline",
+  },
+  urgent: {
+    label: "Khẩn cấp",
+    textClass: "text-red-700",
+    bgClass: "bg-red-50",
+    borderClass: "border-red-300",
+    icon: "flame-outline",
   },
 };

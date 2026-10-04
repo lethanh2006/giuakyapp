@@ -7,6 +7,7 @@ import type {
   MyTaskQuery,
   TaskItem,
   TaskPage,
+  TaskPriority,
   TaskStatus,
   UpdateTaskInput,
 } from "@/src/services/todo/constant";
@@ -78,6 +79,18 @@ export async function updateTodoStatus(
   return axios.patch(
     `${ipNR}/todo/${encodeURIComponent(taskId)}/status`,
     { status },
+    getAuthHeader(token),
+  );
+}
+
+export async function updateTodoPriority(
+  token: string,
+  taskId: string,
+  priority: TaskPriority,
+) {
+  return axios.patch(
+    `${ipNR}/todo/${encodeURIComponent(taskId)}/priority`,
+    { priority },
     getAuthHeader(token),
   );
 }

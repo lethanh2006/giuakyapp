@@ -21,6 +21,7 @@ import {
   getMyTasks,
   updateTodoTask,
   updateTodoStatus,
+  updateTodoPriority,
 } from "@/src/services/todo/todo.service";
 import { getApiErrorMessage } from "@/src/utils/apiHelper";
 import { getAllUsers } from "@/src/services/user/user.service";
@@ -259,6 +260,23 @@ export default function AdminTodoScreen() {
     }
   };
 
+  const updatePriority = async (taskId: string, newPriority: TaskPriority) => {
+    try {
+      setUpdatingTaskId(taskId);
+      const token = await getToken();
+      if (!token) return;
+      await updateTodoPriority(token, taskId, newPriority);
+      await loadTasks();
+    } catch (error: unknown) {
+      Alert.alert(
+        "Lỗi",
+        getApiErrorMessage(error, "Không cập nhật được mức độ ưu tiên"),
+      );
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  };
+
   const updateTask = async (
     taskId: string,
     input: UpdateTaskInput,
@@ -396,6 +414,7 @@ export default function AdminTodoScreen() {
         }
         onAssignTask={assignTask}
         onUpdateStatus={updateStatus}
+        onUpdatePriority={updatePriority}
         onUpdateTask={updateTask}
         onRemoveTask={removeTask}
       />

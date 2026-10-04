@@ -13,6 +13,7 @@ export enum TaskPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
+  URGENT = 'urgent',
 }
 
 export class CreateTaskDto {
@@ -36,12 +37,15 @@ export class CreateTaskDto {
   description?: string;
 
   @ApiProperty({
-    example: 'high',
-    description: 'Mức độ ưu tiên (low, medium, high)',
+    example: 'urgent',
+    description: 'Mức độ ưu tiên (low, medium, high, urgent)',
     required: false,
+    enum: TaskPriority,
   })
   @IsOptional()
-  @IsEnum(TaskPriority, { message: 'priority phải là low, medium hoặc high' })
+  @IsEnum(TaskPriority, {
+    message: 'priority phải là low, medium, high hoặc urgent',
+  })
   priority?: TaskPriority;
 
   @ApiProperty({

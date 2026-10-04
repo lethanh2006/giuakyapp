@@ -19,6 +19,7 @@ import { AssignTaskDto } from './dto/assign-task.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { MyTaskQueryDto, TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { UpdateTaskPriorityDto } from './dto/update-task-priority.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { TaskService } from './task.service';
 
@@ -79,6 +80,16 @@ export class TaskController {
     @Req() request: RequestWithContext,
   ) {
     return this.taskService.update(id, body, request.user!);
+  }
+
+  @Patch(':id/priority')
+  @Roles(...MANAGEMENT_ROLES)
+  updatePriority(
+    @Param('id') id: string,
+    @Body() body: UpdateTaskPriorityDto,
+    @Req() request: RequestWithContext,
+  ) {
+    return this.taskService.updatePriority(id, body.priority, request.user!);
   }
 
   @Get()

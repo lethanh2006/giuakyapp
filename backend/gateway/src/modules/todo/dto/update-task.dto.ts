@@ -32,7 +32,7 @@ export class UpdateTaskDto {
   @ApiPropertyOptional({ enum: TaskPriority })
   @ValidateIf((_object, value: unknown) => value !== undefined)
   @IsEnum(TaskPriority, {
-    message: 'priority phải là low, medium hoặc high',
+    message: 'priority phải là low, medium, high hoặc urgent',
   })
   priority?: TaskPriority;
 

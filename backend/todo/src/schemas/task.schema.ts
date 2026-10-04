@@ -7,7 +7,14 @@ import {
 
 export type TaskDocument = HydratedDocument<Task>;
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'cancelled';
-export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export const PRIORITY_ORDER: Readonly<Record<TaskPriority, number>> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+  urgent: 4,
+};
 
 @Schema({ timestamps: true, collection: 'tasks' })
 export class Task {
@@ -24,8 +31,15 @@ export class Task {
   })
   status!: TaskStatus;
 
-  @Prop({ type: String, enum: ['low', 'medium', 'high'], default: 'medium' })
+  @Prop({
+    type: String,
+    enum: ['low', 'medium', 'high', 'urgent'],
+    default: 'medium',
+  })
   priority!: TaskPriority;
+
+  @Prop({ type: Number, default: 2 })
+  priorityOrder!: number;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   createdBy!: Types.ObjectId;

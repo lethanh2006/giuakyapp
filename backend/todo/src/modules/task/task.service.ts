@@ -15,8 +15,10 @@ import { type AuthenticatedUser } from '../../common/interfaces/authenticated-us
 import { isManagementRole } from '../../common/utils/role.util';
 import { toError } from '../../common/utils/error.util';
 import {
+  PRIORITY_ORDER,
   Task,
   type TaskDocument,
+  type TaskPriority,
   type TaskStatus,
 } from '../../schemas/task.schema';
 import { UserClientService } from '../user-client/user-client.service';
@@ -88,9 +90,13 @@ export class TaskService {
           message: 'Người dùng được giao không tồn tại',
         });
       }
+      const priority = dto.priority ?? 'medium';
+      const priorityOrder = PRIORITY_ORDER[priority] ?? 2;
       const task = await this.taskModel.create({
         ...dto,
         title,
+        priority,
+        priorityOrder,
         createdBy: authenticatedUserId(user),
       });
       this.invalidateMineReads();
@@ -241,7 +247,10 @@ export class TaskService {
         if (dto.description === null) unset.description = 1;
         else set.description = dto.description;
       }
-      if (dto.priority !== undefined) set.priority = dto.priority;
+      if (dto.priority !== undefined) {
+        set.priority = dto.priority;
+        set.priorityOrder = PRIORITY_ORDER[dto.priority] ?? 2;
+      }
       if (dto.deadline !== undefined) {
         if (dto.deadline === null) unset.deadline = 1;
         else set.deadline = new Date(dto.deadline);
@@ -267,6 +276,47 @@ export class TaskService {
       return { message: 'Cập nhật công việc thành công', task };
     } catch (error) {
       this.rethrowOrFail(error, 'Lỗi khi cập nhật công việc');
+    }
+  }
+
+  async updatePriority(
+    id: string,
+    priority: TaskPriority,
+    user: AuthenticatedUser,
+  ) {
+    try {
+      this.assertValidId(id);
+      if (!isManagementRole(user.role)) {
+        throw new ForbiddenException({
+          message: 'Chỉ nhóm quản trị được thay đổi mức độ ưu tiên công việc',
+        });
+      }
+      const task = await this.taskModel.findById(id);
+      if (!task) {
+        throw new NotFoundException({ message: 'Không tìm thấy công việc' });
+      }
+      if (task.status === 'done' || task.status === 'cancelled') {
+        throw new ConflictException({
+          message:
+            'Không thể thay đổi mức độ ưu tiên của công việc đã hoàn thành hoặc đã huỷ',
+        });
+      }
+      const priorityOrder = PRIORITY_ORDER[priority] ?? 2;
+      const updatedTask = await this.taskModel.findByIdAndUpdate(
+        id,
+        { $set: { priority, priorityOrder } },
+        { new: true, runValidators: true },
+      );
+      if (!updatedTask) {
+        throw new NotFoundException({ message: 'Không tìm thấy công việc' });
+      }
+      this.invalidateMineReads();
+      return {
+        message: 'Cập nhật mức độ ưu tiên thành công',
+        task: updatedTask,
+      };
+    } catch (error) {
+      this.rethrowOrFail(error, 'Lỗi khi cập nhật mức độ ưu tiên');
     }
   }
 

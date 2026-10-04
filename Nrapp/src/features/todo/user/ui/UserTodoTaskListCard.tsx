@@ -72,7 +72,19 @@ export default function UserTodoTaskListCard({
               <View className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4" key={task._id}>
                 <View className="flex-row items-start">
                   <View className={`h-10 w-10 items-center justify-center rounded-xl ${priority.bgClass}`}>
-                    <Ionicons name={priority.icon as never} size={18} color="#475569" />
+                    <Ionicons
+                      name={priority.icon as never}
+                      size={18}
+                      color={
+                        task.priority === "urgent"
+                          ? "#dc2626"
+                          : task.priority === "high"
+                          ? "#f43f5e"
+                          : task.priority === "medium"
+                          ? "#d97706"
+                          : "#64748b"
+                      }
+                    />
                   </View>
                   <View className="ml-3 flex-1">
                     <Text className="text-sm font-black leading-5 text-slate-800">{task.title}</Text>
