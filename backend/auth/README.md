@@ -54,13 +54,24 @@ gửi; client không gọi trực tiếp các route này.
 
 Service cần MongoDB, Redis, RabbitMQ và User service nội bộ. MongoDB phải hỗ trợ
 transaction vì credential và outbox được ghi cùng nhau trong một transaction.
+Mặc định đội dùng chung MongoDB Atlas dev, đã hỗ trợ transaction; không cần chạy
+MongoDB trong Docker.
 
-Cấu hình được tạo bởi `npm run setup` tại thư mục gốc. Các giá trị tham khảo:
+Cấu hình được tạo bởi `npm run setup` tại thư mục gốc. Điền URI Atlas dev do
+trưởng nhóm cung cấp riêng vào `backend/.env`; không đưa mật khẩu thật lên Git:
+
+```env
+MONGO_MODE=atlas
+MONGO_URL=mongodb+srv://<db_user>:<url_encoded_password>@<dev_cluster>/nrapp_dev?retryWrites=true&w=majority
+MONGO_DB_NAME=nrapp_dev
+```
+
+`MONGO_DB_NAME` quyết định database được sử dụng, kể cả khi URI có tên database
+khác. Auth dùng chung database dev với các service Mongo khác. Những cấu hình
+riêng của Auth có giá trị tham khảo:
 
 ```env
 PORT=4000
-MONGO_URL=mongodb://127.0.0.1:27017/nrapp?replicaSet=rs0&directConnection=true
-MONGO_DB_NAME=nrapp
 REDIS_URL=redis://localhost:6379
 USER_SERVICE=http://localhost:5000
 JWT_SECRET=replace_with_at_least_32_random_bytes
@@ -82,12 +93,23 @@ Không commit credential hoặc JWT secret thật.
 ## Chạy local
 
 Chạy `npm run setup` tại thư mục gốc của dự án để tạo env đồng bộ và cài
-dependency, sau đó `npm run dev:backend` để bật cả cụm. Xem
+dependency, điền URI Atlas dev vào `backend/.env`, sau đó bật nhóm đăng nhập:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail
+```
+
+Runner bật hạ tầng local cần thiết và các service ở chế độ watch. Dữ liệu tài
+khoản nằm trong `nrapp_dev` trên Atlas, nên các thành viên dùng chung dữ liệu.
+`npm run dev:backend` chạy toàn bộ service khi cần kiểm tra cả ứng dụng. Xem
 [hướng dẫn local dev](../../README.md). Package log dùng chung đã nằm trong
 `backend/logger/packages/observability`.
 
-Sau khi hạ tầng đã chạy, có thể mở terminal ở service này và chạy
-`npm run start:dev` để phát triển riêng.
+Nếu chạy trực tiếp `npm run start:dev` trong service, cần tự bật các dependency
+đã nêu ở trên. Service đọc `backend/.env` trước `.env` riêng, nên cấu hình Mongo
+tập trung vẫn áp dụng khi chạy trực tiếp. Chỉ dùng MongoDB Docker khi chủ động
+chọn `MONGO_MODE=local`; Compose bật profile `local-mongo` và khởi tạo replica
+set `rs0`.
 
 Các lệnh kiểm tra:
 

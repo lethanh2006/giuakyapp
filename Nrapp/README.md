@@ -6,7 +6,13 @@ và chat Socket.IO qua `/socket.io` trên cùng Gateway.
 ## Cài đặt lần đầu
 
 Dùng Node.js 22 LTS và npm. Backend phải chạy trước theo [hướng dẫn tại thư mục gốc](../README.md).
-Từ thư mục `Nrapp`, chạy:
+Khuyến nghị chạy `npm run setup` từ thư mục gốc để cài cả BE/FE và tạo env đồng
+bộ. Nhận URI MongoDB Atlas dev qua kênh riêng từ chủ project, điền vào
+`backend/.env` với `MONGO_MODE=atlas`, `MONGO_DB_NAME=nrapp_dev`; chủ project
+thêm IP public của máy chạy BE vào Atlas Network Access. FE chỉ kết nối
+Gateway, không nhận URI hoặc mật khẩu database.
+
+Nếu chỉ cài FE, từ thư mục `Nrapp`, chạy:
 
 ```bash
 npm ci
@@ -64,7 +70,30 @@ Sau khi đổi `.env`, dừng Expo và chạy lại lệnh với `-- --clear` đ
 ## Đăng nhập local và cấu hình
 
 Dùng đăng ký/đăng nhập email, mật khẩu và OTP với backend local.
-Chat văn bản hoạt động với backend local. Gửi ảnh cần Cloudinary của nhóm
+Đăng ký chưa gửi thư; bấm đăng nhập bằng mật khẩu mới phát OTP. Mở
+`http://localhost:8025` trên máy chạy BE để xem mã trong Mailpit. Cấu hình
+local không gửi thư tới Gmail thật. Tài khoản, hồ sơ, chat, Todo, lịch và căn
+tin được lưu trong **database Atlas dev `nrapp_dev` dùng chung**; các thành viên
+cùng kết nối sẽ thấy chung dữ liệu đã lưu. Redis, RabbitMQ và Mailpit vẫn riêng
+trên từng máy.
+
+Đăng nhập và nhập OTP phải qua **cùng một BE**, vì OTP và phiên được lưu trong
+Redis local của máy phát mã. Khi test luồng tài khoản, chạy `auth` và `user`
+cùng nhau để đồng bộ hồ sơ qua outbox/RabbitMQ; nhóm khuyến nghị từ gốc:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail
+```
+
+Để xem DB trực quan trên Atlas Data Explorer, chủ project mời email thành viên
+vào Atlas project và cấp quyền xem dữ liệu. Quyền vào giao diện này được cấp
+qua lời mời project; database user trong URI dùng để kết nối BE/Compass.
+
+Chat văn bản hoạt động với backend local. Test realtime giữa hai tài khoản cần
+hai FE kết nối **cùng một Gateway/BE**; dữ liệu chat đã lưu dùng chung trên
+Atlas, còn Socket.IO phát sự kiện qua BE mà các FE đang kết nối. Chạy nhóm
+`gateway,auth,user,mail,chat` và mở hai tài khoản trên hai trình duyệt hoặc máy
+tính/điện thoại cùng trỏ về BE đó. Gửi ảnh cần Cloudinary của nhóm
 được cấu hình trong backend; xem [hướng dẫn backend](../backend/README.md).
 Google Sign-In chỉ hiện khi có `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` của nhóm và
 native build phù hợp. Mặc định biến này để trống; không dùng Google project

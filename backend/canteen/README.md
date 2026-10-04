@@ -63,11 +63,22 @@ từ chối chữ ký thiếu, hết hạn hoặc không hợp lệ. Khi phát t
 
 ## Cấu hình
 
-Sao chép `.env.example` thành `.env`:
+Chạy `npm run setup` tại thư mục gốc để tạo env đồng bộ. MongoDB mặc định là
+Atlas dev dùng chung cho đội; điền URI trưởng nhóm cung cấp riêng vào
+`backend/.env`:
+
+```env
+MONGO_MODE=atlas
+MONGO_URL=mongodb+srv://<db_user>:<url_encoded_password>@<dev_cluster>/nrapp_dev?retryWrites=true&w=majority
+MONGO_DB_NAME=nrapp_dev
+```
+
+Các service Mongo cùng sử dụng database `nrapp_dev`; thay đổi thực đơn, bàn và
+đơn hàng dev sẽ hiển thị cho các thành viên cùng kết nối. Không cần chạy MongoDB
+Docker ở chế độ mặc định. Cấu hình riêng của Canteen có giá trị tham khảo:
 
 ```env
 PORT=5005
-MONGO_URL=mongodb://127.0.0.1:27017/nrapp?replicaSet=rs0&directConnection=true
 REDIS_URL=redis://127.0.0.1:6379
 CANTEEN_INTERNAL_SECRET=replace_with_a_long_random_shared_secret
 CANTEEN_REQUIRE_SIGNATURE=false
@@ -80,12 +91,22 @@ Không commit file `.env` thật.
 ## Chạy local
 
 Chạy `npm run setup` tại thư mục gốc của dự án để tạo env đồng bộ và cài
-dependency, sau đó `npm run dev:backend` để bật cả cụm. Xem
+dependency, điền URI Atlas dev vào `backend/.env`, sau đó bật nhóm căn tin:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail,canteen
+```
+
+Runner bật hạ tầng local cần thiết và các service ở chế độ watch.
+`npm run dev:backend` chạy toàn bộ service khi cần kiểm tra cả ứng dụng. Xem
 [hướng dẫn local dev](../../README.md). Package log dùng chung đã nằm trong
 `backend/logger/packages/observability`.
 
-Sau khi hạ tầng đã chạy, có thể mở terminal ở service này và chạy
-`npm run start:dev` để phát triển riêng.
+Nếu chạy trực tiếp `npm run start:dev` trong service, cần tự bật các dependency
+đã nêu ở trên. Service đọc `backend/.env` trước `.env` riêng, nên cấu hình Mongo
+tập trung vẫn áp dụng khi chạy trực tiếp. Chỉ dùng MongoDB Docker khi chủ động
+chọn `MONGO_MODE=local`; Compose bật profile `local-mongo` và khởi tạo replica
+set `rs0`.
 
 Các lệnh kiểm tra chất lượng và hợp đồng dữ liệu:
 

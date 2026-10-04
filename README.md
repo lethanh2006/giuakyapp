@@ -1,7 +1,9 @@
 # NRApp — chạy local cho team
 
 Repo gồm FE Expo/React Native ở `Nrapp/` và các service NestJS ở `backend/`.
-Mỗi thành viên chạy BE, FE và dữ liệu riêng trên máy của mình.
+Mỗi thành viên chạy BE và FE trên máy của mình. Auth, User, Chat, Todo,
+WorkSchedule và Canteen cùng dùng database Atlas dev **`nrapp_dev`** của nhóm.
+Redis, RabbitMQ, Mailpit và PostgreSQL Payment vẫn chạy Docker trên từng máy.
 
 ## Chuẩn bị máy
 
@@ -11,8 +13,8 @@ Mỗi thành viên chạy BE, FE và dữ liệu riêng trên máy của mình.
 - Muốn thử mobile: Expo Go trên điện thoại cùng Wi-Fi, hoặc Android Emulator.
   Bản web chạy bằng trình duyệt, không cần Android Studio.
 
-Lần đầu cần Internet để tải dependency và Docker image. Không cần tài khoản
-deploy, Gmail, MongoDB Atlas hoặc cấu hình GitHub Secrets.
+Cần Internet để kết nối Atlas, tải dependency và Docker image. Không cần tài
+khoản deploy, Gmail hoặc cấu hình GitHub Secrets.
 
 ## Lần đầu sau khi clone
 
@@ -27,9 +29,33 @@ tạo `backend/.env`, env từng service và `Nrapp/.env`; sinh JWT/secret đồ
 riêng cho máy đó. File `.env` và bản sao lưu được Git bỏ qua. Chỉ commit source,
 lockfile và `.env.example`.
 
+Sau khi setup, lấy URI Atlas dev từ người quản lý nhóm rồi điền vào
+**`backend/.env`**. Chỉ sửa cấu hình Mongo ở file này:
+
+```env
+MONGO_MODE=atlas
+MONGO_URL=mongodb+srv://<db_username>:<db_password>@cluster0.nyzuk0s.mongodb.net/nrapp_dev?appName=Cluster0
+MONGO_DB_NAME=nrapp_dev
+```
+
+Thay username/password bằng database user của nhóm; URL-encode mật khẩu nếu
+có ký tự đặc biệt. Runner truyền URI và tên database cho cả sáu service.
+Không đặt URI Mongo trong env FE. Template chỉ chứa placeholder; người clone
+repo cần nhận URI thực để chạy.
+
+Runner dev dùng `DEV_DNS_SERVERS=1.1.1.1,8.8.8.8` trong `backend/.env` để
+phân giải địa chỉ Atlas. Cấu hình này chỉ áp dụng cho các process dev; không
+đổi DNS hệ điều hành. Để trống biến này nếu muốn dùng DNS sẵn có của máy.
+
+Trên Atlas, người quản lý thêm IP public của từng máy vào **Security → Network
+Access**. IP LAN `192.168.x.x` dùng cho điện thoại không phải IP public này.
+Nếu đổi mạng và không kết nối được, cập nhật IP public trong danh sách.
+[Hướng dẫn Network Access](https://www.mongodb.com/docs/atlas/security/add-ip-address-to-list/).
+
 `npm run setup` giữ nguyên env đã tồn tại. Nếu mang env từ repo cũ sang, dùng
 `npm run setup -- --reset-env` một lần: env cũ được sao lưu trong
-`.local-env-backups/`, rồi thay bằng cấu hình local. Lệnh này cũng bỏ
+`.local-env-backups/`, rồi thay bằng template dev; điền lại URI Atlas sau đó.
+Lệnh này cũng bỏ
 `.env.local` cũ sau khi sao lưu để Expo không đọc nhầm URL.
 
 ## Chạy mỗi ngày
@@ -40,9 +66,10 @@ Terminal 1 — BE:
 npm run dev:backend
 ```
 
-Lệnh chờ MongoDB, Redis, RabbitMQ, PostgreSQL và Mailpit local sẵn sàng,
-rồi chạy cả chín Node service ở chế độ watch. Docker chỉ chạy hạ tầng;
-code BE chạy trực tiếp trên máy và tự biên dịch lại khi sửa.
+Lệnh bật Redis, RabbitMQ, PostgreSQL và Mailpit local, chờ healthy rồi chạy cả
+chín Node service ở chế độ watch. Các service Mongo kết nối Atlas dev bằng
+`backend/.env`; chế độ mặc định không bật Mongo trong Docker. Code BE chạy
+trực tiếp trên máy và tự biên dịch lại khi sửa.
 
 Terminal 2 — FE web:
 
@@ -64,8 +91,9 @@ cổng 3000, nên không phải đổi riêng URL chat.
 
 ## Hai bạn sửa code và test local thế nào?
 
-Sau lần setup đầu, mỗi bạn làm trên nhánh Git và database local riêng. Không
-cần chạy lại `npm run setup` mỗi lần sửa code hoặc mỗi lần khởi động máy.
+Sau lần setup đầu, mỗi bạn làm trên nhánh Git riêng và dùng chung dữ liệu
+Atlas dev. Đặt email/username test có tên mình để tránh trùng dữ liệu của bạn
+khác. Không cần chạy lại `npm run setup` mỗi lần sửa code hoặc khởi động máy.
 
 - Sửa code **BE**: giữ terminal BE đang chạy. Nest watch tự biên dịch và khởi
   động lại service có file thay đổi; chờ log hết lỗi rồi thao tác lại trên FE.
@@ -93,6 +121,10 @@ cần chạy lại `npm run setup` mỗi lần sửa code hoặc mỗi lần kh�
 
 Nhóm BE dưới đây bao gồm đăng ký, đăng nhập OTP và đọc hồ sơ, để không phải
 bỏ qua bước xác thực khi test tính năng:
+
+**Luôn chạy Auth cùng User.** Outbox đăng ký dùng chung trên Atlas, nhưng mỗi
+Auth chuyển sự kiện sang RabbitMQ của máy mình. Nếu một máy chỉ bật Auth mà
+không bật User, hồ sơ của thành viên khác có thể bị chậm đồng bộ.
 
 | Tính năng cần test trên FE | Danh sách Node service |
 | --- | --- |
@@ -142,7 +174,10 @@ Gateway xác minh token qua Auth.
 Trước tiên thử tính năng đã sửa trên FE/API local: trường hợp thành công,
 validation dữ liệu sai và quyền user/admin nếu có thay đổi quyền. Nếu đổi
 request/response giữa FE và BE, thử cả hai đầu cùng phiên bản code. Ví dụ sửa
-chat thì đăng nhập hai tài khoản, gửi tin nhắn và kiểm tra bên nhận cập nhật.
+chat thì đăng nhập hai tài khoản trên **cùng một BE**, gửi tin nhắn và kiểm tra
+bên nhận cập nhật. Dùng hai trình duyệt hoặc điện thoại cùng trỏ tới Gateway
+của máy đó. Mongo chung giúp xem tin nhắn đã lưu trên mọi máy; Socket.IO hiện
+chỉ phát realtime trong BE đang chạy, chưa liên thông các BE của thành viên.
 
 Sau khi test thao tác, dừng BE watch trước các lệnh build để tránh ghi đè
 `dist` của service đang chạy. Từ thư mục gốc, chỉ kiểm tra các phần đã sửa.
@@ -192,7 +227,8 @@ chỉ nằm ở một service độc lập.
    ```
 
 2. Sửa code, chạy nhóm BE/FE cần thiết, test thao tác và chạy các kiểm tra ở
-   trên. Hai bạn có thể chạy local đồng thời trên hai máy; không dùng chung DB.
+   trên. Hai bạn có thể chạy local đồng thời trên hai máy và cùng thấy dữ liệu
+   Atlas dev; thay đổi/xóa dữ liệu test sẽ có hiệu lực với cả nhóm.
 3. Kiểm tra diff, chỉ stage những file của công việc đó. Ví dụ sửa chat:
 
    ```bash
@@ -238,10 +274,31 @@ Sau khi đổi env, dừng Expo rồi chạy lại với `npm run start:lan -- -
 
 ## Tài khoản và OTP
 
-Database local ban đầu trống. Đăng ký tài khoản trên FE, sau đó đăng nhập bằng
-email/mật khẩu. Mở **http://localhost:8025** để đọc thư OTP do Mailpit nhận,
-rồi nhập mã vào FE. Email thử nghiệm không cần là hộp thư thật; thư được giữ
-trong Mailpit local.
+**Local dùng Mailpit để nhận thư; OTP không gửi tới Gmail thật.** Luồng hiện
+tại: đăng ký tạo tài khoản → đăng nhập bằng email/mật khẩu mới phát OTP → mở
+**http://localhost:8025** trên máy chạy BE để đọc mã → nhập mã vào FE.
+Đăng ký thành công chưa phát email, nên lúc đó hộp thư chưa có thư là bình thường.
+
+Email thử nghiệm có thể là địa chỉ Gmail của bạn hoặc email bất kỳ đúng định
+dạng. Thư được giữ trong Mailpit trên máy đó. Phải bật service `mail`, Auth,
+User và Gateway; từ thư mục gốc:
+
+```bash
+npm run dev:backend -- --services=gateway,auth,user,mail
+```
+
+Tài khoản được lưu chung trên Atlas, nhưng OTP và phiên đăng nhập nằm trong
+Redis local. Đăng nhập và xác minh OTP qua cùng BE; đọc Mailpit của máy chạy
+BE đó. Đổi sang BE của bạn khác thì đăng nhập lại để tạo phiên tại máy đó.
+
+Nếu Mailpit trống sau khi bấm **đăng nhập**, kiểm tra log `[auth]`, `[mail]`,
+`http://localhost:5001/health/ready` và RabbitMQ. Đợi một phút trước khi xin lại
+OTP; mã hết hạn sau năm phút. Khi chạy trên điện thoại, mở Mailpit bằng trình
+duyệt trên máy tính chạy BE; `localhost` của điện thoại là chính điện thoại.
+
+Runner local luôn dùng SMTP Mailpit ở `127.0.0.1:1025`. Chỉ sửa SMTP Gmail
+trong `backend/mail/.env` sẽ không chuyển sang gửi Gmail khi dùng runner;
+việc gửi email thật cần cấu hình riêng cho SMTP và runner.
 
 Google Sign-In để trống mặc định. Muốn thử tính năng này cần OAuth client ID
 riêng ở FE và Auth, cùng native development build có Google Sign-In. Expo Go
@@ -252,6 +309,68 @@ Payment chạy PostgreSQL local và tự tạo bảng qua migration. Thông tin 
 là dữ liệu mẫu, chưa nối Casso thật. Gateway hiện chưa đăng ký module Payment;
 FE căn tin đang dùng thanh toán tiền mặt.
 
+## Database dev dùng chung và cách xem dữ liệu
+
+Database Mongo đang dùng là **`nrapp_dev`** trên cluster Atlas
+**`cluster0.nyzuk0s.mongodb.net`**. Auth, User, Chat, Todo, WorkSchedule và
+Canteen cùng đọc/ghi database này. BE/FE vẫn chạy trên máy từng thành viên.
+
+Để cả nhóm xem dữ liệu ngay trong trình duyệt:
+
+1. Người quản lý mời email Atlas của hai bạn vào project trong **Project
+   Access Manager / Add Members**. Quyền **Project Data Access Read/Write**
+   cho phép xem và sửa dữ liệu trên Data Explorer.
+2. Mỗi bạn nhận lời mời, mở đúng project và cluster **Cluster0**.
+3. Vào **Data Explorer / Browse Collections**, chọn **`nrapp_dev`**, rồi mở
+   collection cần xem. Có thể lọc bằng `{ email: "tenban@example.com" }`
+   trong collection `credentials` để tìm tài khoản test của mình.
+
+Tài khoản được mời vào project là tài khoản dùng trang web Atlas. Username và
+password trong `MONGO_URL` là **database user** cho BE kết nối; hai loại này
+khác nhau. [Hướng dẫn Data Explorer](https://www.mongodb.com/docs/atlas/atlas-ui/databases/),
+[quyền thành viên](https://www.mongodb.com/docs/atlas/reference/user-roles/).
+
+Nhóm collection chính:
+
+| Collection | Dữ liệu |
+| --- | --- |
+| `credentials` | Tài khoản đăng ký: email, password hash, role |
+| `users` | Hồ sơ, username; User service đồng bộ sau khi đăng ký |
+| `auth_outbox_events` | Sự kiện đồng bộ tài khoản sang User |
+| `chats`, `messages` | Cuộc trò chuyện và tin nhắn |
+| `tasks` | Công việc Todo |
+| `schedulerequests`, `scheduleentries` | Yêu cầu và ngày làm việc |
+| `categories`, `menuitems`, `tables`, `orders` | Dữ liệu căn tin |
+
+Hồ sơ `users` được đồng bộ qua RabbitMQ, nên User service cần chạy. Nếu chỉ
+thấy tài khoản trong `credentials`, kiểm tra log `[user]` và luồng outbox.
+Database/collection xuất hiện khi service tạo dữ liệu hoặc khởi tạo schema.
+Dừng Docker trên máy không xóa dữ liệu Atlas. Dữ liệu từ Mongo Docker cũ
+không tự chuyển sang cluster mới; đăng ký tài khoản test tại DB mới.
+
+Nếu thích dùng MongoDB Compass, dán URI trong `backend/.env` vào Compass và
+chọn `nrapp_dev`. Không đọc/sửa các file dữ liệu trong Docker để xem Mongo.
+
+Payment dùng database PostgreSQL **`nrapp_payment`** riêng; không nằm trong
+MongoDB. Cổng lấy từ `PAYMENT_POSTGRES_HOST_PORT`: template là `5433`, env trên
+máy hiện tại là `15433`. Redis giữ OTP/cache và RabbitMQ chuyển các sự kiện.
+
+### Tùy chọn dùng Mongo riêng trên máy
+
+Mặc định nhóm dùng Atlas. Nếu cần test với DB riêng, đổi `backend/.env`:
+
+```env
+MONGO_MODE=local
+MONGO_DB_NAME=nrapp_local
+```
+
+Sau đó chạy lại `npm run dev:backend`. Runner bật thêm MongoDB Docker 7.0,
+replica set `rs0`, qua profile `local-mongo` và tự tính URI local theo
+`MONGO_HOST_PORT`. Dữ liệu nằm trong volume `nrapp-local-dev_mongo_data`.
+Khi quay lại DB chung, đặt `MONGO_MODE=atlas`, `MONGO_DB_NAME=nrapp_dev` và giữ
+URI Atlas đúng. IDE chạy trực tiếp `start:dev` không tính URI theo mode;
+ở chế độ local riêng, cần đặt `MONGO_URL` local tương ứng nếu bỏ qua runner.
+
 ## Địa chỉ local
 
 | Thành phần | Địa chỉ mặc định |
@@ -261,7 +380,7 @@ FE căn tin đang dùng thanh toán tiền mặt.
 | Swagger | `http://localhost:3000/api-docs` |
 | Mailpit — xem OTP | `http://localhost:8025` |
 | RabbitMQ UI | `http://localhost:15672` |
-| MongoDB | `mongodb://127.0.0.1:27017/nrapp?replicaSet=rs0&directConnection=true` |
+| MongoDB Atlas | Cluster dev chung; database `nrapp_dev`, URI trong `backend/.env` |
 | PostgreSQL Payment | `127.0.0.1:5433` |
 
 Tài khoản RabbitMQ và PostgreSQL nằm trong `backend/.env`. Các cổng hạ tầng
@@ -285,7 +404,15 @@ npm run infra:down
   đổi mật khẩu database. `--reset-env` tạo secret mới, không xóa dữ liệu DB.
 - **Không nhận OTP:** kiểm tra log `[mail]`, `[auth]` và Mailpit, rồi thử đăng
   nhập lại sau một phút.
-- **Lỗi Mongo transaction:** dùng Mongo của Compose đã có replica set `rs0`;
-  Mongo standalone cài riêng sẽ không chạy được luồng này. [Tài liệu MongoDB](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/).
+- **Atlas `bad auth`:** kiểm tra username/password của database user trong
+  `MONGO_URL`; mật khẩu đăng nhập trang web Atlas không dùng để kết nối BE.
+- **Atlas timeout:** kiểm tra Internet, cluster đang hoạt động và IP public
+  của máy đã có trong Network Access.
+- **Atlas `querySrv ETIMEOUT` / `ECONNREFUSED`:** kiểm tra `DEV_DNS_SERVERS`
+  trong `backend/.env`, dùng `1.1.1.1,8.8.8.8` rồi chạy lại runner. Đây là
+  lỗi phân giải DNS trước khi xác thực DB.
+  [Hướng dẫn kết nối Atlas](https://www.mongodb.com/docs/atlas/troubleshoot-connection/).
+- **Lỗi Mongo transaction:** Atlas và Mongo Compose `rs0` đều hỗ trợ; Mongo
+  standalone cài riêng sẽ không chạy được luồng này.
 
 Chi tiết từng phần: [BE](backend/README.md), [FE](Nrapp/README.md).

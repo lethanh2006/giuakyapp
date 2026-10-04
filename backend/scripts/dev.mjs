@@ -3,8 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { createServer } from "node:net";
+import { Resolver } from "node:dns";
 import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
+import { composeArguments, redactMongoUris, resolveMongoConfig } from "./mongo-config.mjs";
 
 const backendDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const allServices = [
@@ -80,7 +82,9 @@ Cách dùng tại thư mục gốc:
 
 Các service: ${allServices.map(({ name }) => name).join(", ")}.
 Không tự thêm service phụ thuộc. Tự liệt kê đủ service của luồng cần test (xem README).
-Nếu không dùng --skip-infra, hạ tầng Docker vẫn được khởi động đầy đủ.`);
+MONGO_MODE=atlas dùng MongoDB Atlas dev chung; các hạ tầng khác chạy Docker local.
+MONGO_MODE=local dùng thêm MongoDB trong Docker.
+Nếu không dùng --skip-infra, hạ tầng Docker của chế độ đã chọn được khởi động.`);
   process.exit(0);
 }
 
@@ -93,6 +97,23 @@ if (!existsSync(resolve(backendDir, ".env"))) {
   fail("Chưa có backend/.env. Chạy npm run setup tại thư mục gốc trước.");
 }
 const rootEnv = { ...readEnv(resolve(backendDir, ".env")), ...process.env };
+let mongo;
+try {
+  mongo = resolveMongoConfig(rootEnv);
+} catch (error) {
+  fail(error.message);
+}
+const dnsServers = (rootEnv.DEV_DNS_SERVERS || "").trim();
+let dnsPreload;
+if (dnsServers) {
+  try {
+    // Validate without performing a lookup or changing the system resolver.
+    new Resolver().setServers(dnsServers.split(",").map((server) => server.trim()));
+  } catch {
+    fail("DEV_DNS_SERVERS phải là danh sách địa chỉ IP DNS hợp lệ, ngăn cách bằng dấu phẩy.");
+  }
+  dnsPreload = `--require=${JSON.stringify(resolve(backendDir, "scripts/dev-dns.cjs"))}`;
+}
 for (const key of [
   "JWT_SECRET",
   "RABBITMQ_USER",
@@ -172,7 +193,7 @@ if (busyPorts.length) {
 }
 
 if (!skipInfra) {
-  const result = spawnSync("docker", ["compose", "up", "-d", "--wait"], {
+  const result = spawnSync("docker", composeArguments(mongo.mode, "up"), {
     cwd: backendDir,
     env: rootEnv,
     stdio: "inherit",
@@ -184,8 +205,9 @@ if (!skipInfra) {
 
 const sharedLocalEnv = {
   NODE_ENV: "development",
-  MONGO_URL: `mongodb://127.0.0.1:${port("MONGO_HOST_PORT", "27017")}/${rootEnv.MONGO_DB_NAME || "nrapp"}?replicaSet=rs0&directConnection=true`,
-  MONGO_DB_NAME: rootEnv.MONGO_DB_NAME || "nrapp",
+  MONGO_MODE: mongo.mode,
+  MONGO_URL: mongo.url,
+  MONGO_DB_NAME: mongo.database,
   REDIS_URL: `redis://127.0.0.1:${port("REDIS_HOST_PORT", "6379")}`,
   Rabbitmq_Host: "127.0.0.1",
   Rabbitmq_Port: port("RABBITMQ_AMQP_HOST_PORT", "5672"),
@@ -281,13 +303,23 @@ function shutdown(signal = "SIGTERM") {
 
 function pipeLogs(stream, name, output) {
   const lines = createInterface({ input: stream });
-  lines.on("line", (line) => output.write(`[${name}] ${line}\n`));
+  lines.on("line", (line) => output.write(`[${name}] ${redactMongoUris(line)}\n`));
 }
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 for (const service of services) {
   const serviceDir = resolve(backendDir, service.name);
+  const childEnv = {
+    ...readEnv(resolve(serviceDir, ".env")),
+    ...rootEnv,
+    ...sharedLocalEnv,
+    PORT: port(service.portKey, service.defaultPort),
+  };
+  if (dnsPreload) {
+    // Nest's compiler and application subprocesses inherit NODE_OPTIONS too.
+    childEnv.NODE_OPTIONS = `${childEnv.NODE_OPTIONS || ""} ${dnsPreload}`.trim();
+  }
   const child = spawn(
     process.execPath,
     [
@@ -297,12 +329,7 @@ for (const service of services) {
     ],
     {
       cwd: serviceDir,
-      env: {
-        ...readEnv(resolve(serviceDir, ".env")),
-        ...rootEnv,
-        ...sharedLocalEnv,
-        PORT: port(service.portKey, service.defaultPort),
-      },
+      env: childEnv,
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -334,6 +361,11 @@ for (const service of services) {
 console.log(
   `Các service local đang khởi động: ${services.map(({ name }) => name).join(", ")}.`,
 );
+console.log(
+  mongo.mode === "atlas"
+    ? `MongoDB Atlas: database dev chung ${mongo.database}.`
+    : `MongoDB Docker local: database ${mongo.database}, port ${port("MONGO_HOST_PORT", "27017")}.`,
+);
 if (services.some(({ name }) => name === "gateway")) {
   console.log(`Gateway: http://localhost:${port("GATEWAY_HOST_PORT", "3000")}`);
 }
@@ -341,5 +373,5 @@ console.log(
   `Hộp thư OTP local: http://localhost:${port("MAILPIT_UI_HOST_PORT", "8025")}`,
 );
 console.log(
-  "Nhấn Ctrl+C để dừng app. Dừng hạ tầng bằng npm run infra:down; dữ liệu được giữ trong Docker volumes.",
+  "Nhấn Ctrl+C để dừng app. Dừng hạ tầng local bằng npm run infra:down; dữ liệu DB được giữ.",
 );
