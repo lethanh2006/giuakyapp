@@ -161,6 +161,45 @@ export class CanteenService {
     );
   }
 
+  // --- Review APIs ---
+  async upsertReview(id: string, dto: any, user: any) {
+    return this.forward(
+      'PUT',
+      `/api/canteen/orders/${encodeURIComponent(id)}/review`,
+      dto,
+      null,
+      user,
+    );
+  }
+
+  async getMyReviews(user: any) {
+    return this.forward('GET', '/api/canteen/reviews/my', null, null, user);
+  }
+
+  async getReviewSummary(params: any, user: any) {
+    return this.forward(
+      'GET',
+      '/api/canteen/reviews/summary',
+      null,
+      params,
+      user,
+    );
+  }
+
+  async getReviews(params: any, user: any) {
+    return this.forward('GET', '/api/canteen/reviews', null, params, user);
+  }
+
+  async replyToReview(id: string, dto: any, user: any) {
+    return this.forward(
+      'PATCH',
+      `/api/canteen/reviews/${encodeURIComponent(id)}/reply`,
+      dto,
+      null,
+      user,
+    );
+  }
+
   // --- Table APIs ---
   async getAllTables(params: any, user: any) {
     return this.forward('GET', '/api/canteen/tables', null, params, user);

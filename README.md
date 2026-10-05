@@ -341,6 +341,7 @@ Nhóm collection chính:
 | `tasks` | Công việc Todo |
 | `schedulerequests`, `scheduleentries` | Yêu cầu và ngày làm việc |
 | `categories`, `menuitems`, `tables`, `orders` | Dữ liệu căn tin |
+| `reviews` | Đánh giá đơn căn tin và phản hồi của admin |
 
 Hồ sơ `users` được đồng bộ qua RabbitMQ, nên User service cần chạy. Nếu chỉ
 thấy tài khoản trong `credentials`, kiểm tra log `[user]` và luồng outbox.
