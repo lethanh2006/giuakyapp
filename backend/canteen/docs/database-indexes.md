@@ -8,6 +8,11 @@
 | Order | `{ tableId: 1 }` | Kiểm tra đơn chưa tất toán cùng bàn |
 | MenuItem | `{ categoryId: 1, isAvailable: 1 }` | Menu công khai, tìm kiếm, kiểm tra xóa danh mục |
 | Category | `{ displayOrder: 1, name: 1 }` | Sắp xếp danh mục |
+| Review | `{ orderId: 1 }` (unique) | Một đánh giá/đơn; điều kiện upsert của đánh giá |
+| Review | `{ createdAt: -1, _id: -1 }` | Danh sách đánh giá cho admin, khoảng thời gian |
+| Review | `{ rating: 1, createdAt: -1, _id: -1 }` | Lọc đánh giá theo số sao |
+| Review | `{ repliedAt: 1, createdAt: -1, _id: -1 }` | Lọc/đếm đánh giá chưa phản hồi |
+| Review | `{ userId: 1, createdAt: -1, _id: -1 }` | Đánh giá của chính người dùng |
 
 Các khóa unique của tên bàn/danh mục, mã đơn và counter được giữ.
 `_id` làm khóa phụ để phân trang ổn định khi nhiều đơn cùng thời gian tạo.
