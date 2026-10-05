@@ -155,6 +155,7 @@ Nrapp/
 | `services/workschedule/constant.ts`             | Toàn bộ type/payload/response của workschedule                         |
 | `services/canteen/canteen.service.ts`           | Menu, order và xác nhận thanh toán tiền mặt                            |
 | `services/canteen/category.service.ts`          | CRUD danh mục món                                                      |
+| `services/canteen/review.service.ts`            | Đánh giá đơn, danh sách/thống kê và phản hồi của admin                 |
 | `services/canteen/table.service.ts`             | Quản lý bàn và trạng thái                                            |
 | `services/canteen/admin-resource.ts`            | Chuẩn hóa list/pagination của resource admin                           |
 | `services/canteen/constant.ts`                  | Menu, order, trạng thái và query types                                 |
@@ -663,11 +664,15 @@ cancelled   → todo
 | ---------------------------------------------- | ---------------------------------------------------- |
 | `canteen/user/screens/UserCanteenScreen.tsx`   | Chọn bàn, menu, search, giỏ, đơn cá nhân và tiền mặt |
 | `canteen/user/ui/UserOrderSummaryCard.tsx`     | Thẻ đơn hàng user                                    |
+| `canteen/user/ui/OrderReviewPanel.tsx`         | Chấm sao, nhận xét và xem phản hồi cho đơn đã trả    |
+| `canteen/user/ui/UserStarRating.tsx`           | Hiển thị/chọn số sao                                 |
 | `canteen/admin/screens/AdminCanteenScreen.tsx` | Đơn theo bàn, xác nhận tiền mặt và quản trị danh mục |
 | `canteen/admin/ui/AdminMenuCatalog.tsx`        | CRUD món, undo/redo menu                             |
 | `canteen/admin/ui/AdminCategoryManager.tsx`    | CRUD danh mục                                        |
 | `canteen/admin/ui/AdminTableManager.tsx`       | Quản lý bàn và trạng thái                          |
 | `canteen/admin/ui/AdminOrderSummaryCard.tsx`   | Thẻ đơn cho vận hành                                 |
+| `canteen/admin/ui/AdminReviewManager.tsx`      | Tab Đánh giá: thống kê, bộ lọc, phản hồi             |
+| `canteen/admin/ui/AdminStarRating.tsx`         | Hiển thị số sao                                      |
 | `canteen/shared/model/presentation.ts`         | Format tiền/ngày/ID, màu status, lỗi                 |
 
 #### Luồng user đặt món
@@ -694,6 +699,16 @@ Chi tiết:
   gọi thêm.
 - User chỉ thấy nút hủy khi đơn còn `CREATED` và chưa `PAID`.
 
+#### Đánh giá và phản hồi
+
+Đơn `COMPLETED/PAID` hiện khối đánh giá trong tab **Đơn của tôi**. User tải
+`GET /canteen/reviews/my`, gửi hoặc sửa bằng `PUT /canteen/orders/:id/review`
+trong 7 ngày kể từ khi thu tiền và chỉ khi chưa được phản hồi; server là nơi
+quyết định, FE chỉ ẩn/hiện form theo `isReviewWindowOpen`. Admin dùng tab
+**Đánh giá** (`GET /canteen/reviews`, `/reviews/summary`,
+`PATCH /canteen/reviews/:id/reply`). Quy tắc đầy đủ:
+[`backend/canteen/docs/ba-danh-gia-phan-hoi.md`](../../backend/canteen/docs/ba-danh-gia-phan-hoi.md).
+
 #### Luồng vận hành đơn và thanh toán
 
 Luồng FE hiện tại:
@@ -714,6 +729,9 @@ dụng cho đơn chưa thanh toán còn ở trạng thái `CREATED/PENDING`.
 | ----- | --------------------: | ------------: | -------------------: |
 | admin | Có, xác nhận tiền mặt |            Có |                   Có |
 | user  |      Xem đơn của mình |         Không | Chọn bàn khi gọi món |
+
+Đánh giá: user đánh giá đơn của mình đã thanh toán; admin xem thống kê, lọc và
+phản hồi.
 
 Đây là điều kiện hiển thị/thao tác trong frontend. Backend vẫn phải kiểm tra
 role cho từng endpoint. Đã xóa mã nguồn bếp, kho, nguyên liệu, thống kê, QR/Casso

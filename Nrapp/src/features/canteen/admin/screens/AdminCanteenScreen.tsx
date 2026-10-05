@@ -3,6 +3,7 @@ import AdminCategoryManager from "@/src/features/canteen/admin/ui/AdminCategoryM
 import AdminMenuCatalog from "@/src/features/canteen/admin/ui/AdminMenuCatalog";
 import AdminOrderFilters from "@/src/features/canteen/admin/ui/AdminOrderFilters";
 import AdminOrderSummaryCard from "@/src/features/canteen/admin/ui/AdminOrderSummaryCard";
+import AdminReviewManager from "@/src/features/canteen/admin/ui/AdminReviewManager";
 import AdminTableManager from "@/src/features/canteen/admin/ui/AdminTableManager";
 import { getCanteenErrorMessage } from "@/src/features/canteen/shared/model/presentation";
 import {
@@ -41,7 +42,7 @@ import {
   View,
 } from "react-native";
 
-type OperationsTab = "orders" | "catalog" | "categories" | "tables";
+type OperationsTab = "orders" | "catalog" | "categories" | "tables" | "reviews";
 type StatusFilter = OrderStatus | "ALL";
 type PaymentFilter = OrderPaymentStatus | "ALL";
 type OrderAction = "cash" | "cancel";
@@ -71,6 +72,11 @@ const OPERATION_TAB_ITEMS: {
     value: "tables",
     label: "Bàn ăn",
     icon: "grid-outline",
+  },
+  {
+    value: "reviews",
+    label: "Đánh giá",
+    icon: "star-outline",
   },
 ];
 
@@ -573,6 +579,8 @@ export default function AdminCanteenScreen() {
           <AdminMenuCatalog refreshKey={resourceRefreshKey} />
         ) : tab === "categories" ? (
           <AdminCategoryManager refreshKey={resourceRefreshKey} />
+        ) : tab === "reviews" ? (
+          <AdminReviewManager refreshKey={resourceRefreshKey} />
         ) : (
           <AdminTableManager refreshKey={resourceRefreshKey} />
         )}

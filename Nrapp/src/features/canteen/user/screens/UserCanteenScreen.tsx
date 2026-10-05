@@ -3,6 +3,7 @@ import {
   formatMoney,
   getCanteenErrorMessage,
 } from "@/src/features/canteen/shared/model/presentation";
+import OrderReviewPanel from "@/src/features/canteen/user/ui/OrderReviewPanel";
 import UserOrderSummaryCard from "@/src/features/canteen/user/ui/UserOrderSummaryCard";
 import {
   cancelCanteenOrder,
@@ -16,6 +17,12 @@ import type {
   MenuGroup,
   MenuItem,
 } from "@/src/services/canteen/constant";
+import {
+  getMyCanteenReviews,
+  upsertCanteenReview,
+  type CanteenReview,
+  type UpsertReviewInput,
+} from "@/src/services/canteen/review.service";
 import {
   listCanteenTables,
   type CanteenTable,
@@ -156,6 +163,7 @@ export default function UserCanteenScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [orders, setOrders] = useState<CanteenOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [reviews, setReviews] = useState<Record<string, CanteenReview>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [cancelReasons, setCancelReasons] = useState<Record<string, string>>(
     {},
@@ -254,11 +262,24 @@ export default function UserCanteenScreen() {
     [getToken, isAuth],
   );
 
+  const loadReviews = useCallback(async () => {
+    if (!isAuth) return;
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const mine = await getMyCanteenReviews(token);
+      setReviews(Object.fromEntries(mine.map((item) => [item.orderId, item])));
+    } catch {
+      // Đánh giá chỉ là phần phụ của danh sách đơn; lỗi tải đơn đã được báo riêng.
+    }
+  }, [getToken, isAuth]);
+
   useEffect(() => {
     void loadMenu();
     void loadTables();
     void loadOrders();
-  }, [loadMenu, loadOrders, loadTables]);
+    void loadReviews();
+  }, [loadMenu, loadOrders, loadReviews, loadTables]);
 
   useEffect(() => {
     const keyword = searchQuery.trim();
@@ -393,6 +414,30 @@ export default function UserCanteenScreen() {
     }
   };
 
+  const submitReview = async (
+    order: CanteenOrder,
+    input: UpsertReviewInput,
+  ) => {
+    try {
+      const token = await getToken();
+      if (!token) return false;
+      const saved = await upsertCanteenReview(token, order._id, input);
+      setReviews((current) => ({ ...current, [order._id]: saved }));
+      Alert.alert(
+        "Cảm ơn bạn",
+        `Đã ghi nhận đánh giá cho đơn ${order.orderNumber}.`,
+      );
+      return true;
+    } catch (error) {
+      Alert.alert(
+        "Lỗi",
+        getCanteenErrorMessage(error, "Không gửi được đánh giá"),
+      );
+      void loadReviews();
+      return false;
+    }
+  };
+
   const confirmCancel = (order: CanteenOrder) =>
     Alert.alert(
       "Xác nhận hủy đơn",
@@ -410,7 +455,12 @@ export default function UserCanteenScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([loadMenu(), loadTables(), loadOrders(false)]);
+      await Promise.all([
+        loadMenu(),
+        loadTables(),
+        loadOrders(false),
+        loadReviews(),
+      ]);
     } finally {
       setRefreshing(false);
     }
@@ -813,6 +863,13 @@ export default function UserCanteenScreen() {
                         )}
                       </Pressable>
                     </View>
+                  ) : order.status === "COMPLETED" &&
+                    order.paymentStatus === "PAID" ? (
+                    <OrderReviewPanel
+                      order={order}
+                      onSubmit={submitReview}
+                      review={reviews[order._id]}
+                    />
                   ) : undefined
                 }
               />
