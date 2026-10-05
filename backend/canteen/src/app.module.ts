@@ -10,6 +10,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CategoryModule } from './modules/category/category.module';
 import { CoreModule } from './core/core.module';
 import { HealthModule } from './modules/health/health.module';
+import { ReviewModule } from './modules/review/review.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { HealthModule } from './modules/health/health.module';
     MenuModule,
     OrderModule,
     CategoryModule,
+    ReviewModule,
     HealthModule,
   ],
   controllers: [AppController],

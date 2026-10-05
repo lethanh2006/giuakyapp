@@ -10,6 +10,8 @@ thông qua API Gateway.
 - Admin quản lý món ăn, danh mục và bàn.
 - Nhân viên tạo đơn theo bàn; giá món và tùy chọn được xử lý phía server.
 - Admin thu tiền mặt và hủy các đơn đủ điều kiện.
+- Nhân viên đánh giá 1–5 sao đơn đã thanh toán trong 7 ngày; admin xem thống kê,
+  lọc và phản hồi. Chi tiết nghiệp vụ: [tài liệu BA đánh giá & phản hồi](docs/ba-danh-gia-phan-hoi.md).
 - Lịch sử undo/redo thực đơn được lưu qua Redis.
 - Tự tạo 20 bàn mặc định ở lần khởi động đầu tiên nhưng không ghi đè dữ liệu
   bàn đã tồn tại.
@@ -49,6 +51,10 @@ Tất cả route nằm dưới `/api/canteen` và được expose qua Gateway.
 | `GET /tables` và `GET /tables/:id` | Đã xác thực | Xem trạng thái bàn |
 | `POST/PATCH/DELETE /tables...` | Admin | Tạo, sửa, xóa và đổi trạng thái bàn |
 | `POST/PATCH/DELETE /categories...` | Admin | Quản lý danh mục |
+| `PUT /orders/:id/review` | Chủ đơn | Tạo hoặc sửa đánh giá cho đơn đã thanh toán (≤ 7 ngày, chưa được phản hồi) |
+| `GET /reviews/my` | Đã xác thực | Xem đánh giá của chính mình |
+| `GET /reviews`, `GET /reviews/summary` | Admin | Danh sách có lọc/phân trang và thống kê đánh giá |
+| `PATCH /reviews/:id/reply` | Admin | Phản hồi hoặc sửa phản hồi |
 
 `GET /health/live` (và `/health`) báo liveness của process. Endpoint readiness
 báo trạng thái MongoDB và Redis, đồng thời trả response unavailable khi một
@@ -121,5 +127,6 @@ npm run check:indexes
 `check:indexes` khởi động MongoDB tạm thời bằng Docker và kiểm tra index cùng các
 luồng quan trọng về tính nhất quán đơn hàng/trạng thái bàn.
 
-Tài liệu chi tiết hơn nằm trong [hướng dẫn vòng đời request](docs/request-lifecycle.md)
-và [hướng dẫn index database](docs/database-indexes.md).
+Tài liệu chi tiết hơn nằm trong [hướng dẫn vòng đời request](docs/request-lifecycle.md),
+[hướng dẫn index database](docs/database-indexes.md) và
+[nghiệp vụ đánh giá & phản hồi](docs/ba-danh-gia-phan-hoi.md).
