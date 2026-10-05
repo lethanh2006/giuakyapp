@@ -39,6 +39,7 @@ type Props = {
   onAssignTask: (taskId: string) => void;
   onUpdateStatus: (taskId: string, status: TaskStatus) => void;
   onUpdatePriority?: (taskId: string, priority: TaskPriority) => void;
+  onUpdateProgress?: (taskId: string, progress: number) => void;
   onUpdateTask: (taskId: string, input: UpdateTaskInput) => Promise<boolean>;
   onRemoveTask: (taskId: string) => void;
 };
@@ -77,6 +78,7 @@ export default function AdminTodoTaskListCard({
   onAssignTask,
   onUpdateStatus,
   onUpdatePriority,
+  onUpdateProgress,
   onUpdateTask,
   onRemoveTask,
 }: Props) {
@@ -353,6 +355,82 @@ export default function AdminTodoTaskListCard({
                     </Text>
                   </View>
                 )}
+
+                {/* Progress Bar & Quick Updater */}
+                <View className="mt-3 rounded-xl bg-white p-3 border border-slate-100">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <Ionicons
+                        name="trending-up-outline"
+                        size={13}
+                        color="#64748b"
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text className="text-[11px] font-bold text-slate-600">
+                        Tiến độ hoàn thành
+                      </Text>
+                    </View>
+                    <Text className="text-xs font-black text-slate-800">
+                      {task.progress ?? (task.status === "done" ? 100 : 0)}%
+                    </Text>
+                  </View>
+                  <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <View
+                      className={`h-full rounded-full ${
+                        (task.progress ?? 0) >= 100
+                          ? "bg-emerald-500"
+                          : (task.progress ?? 0) >= 50
+                          ? "bg-amber-500"
+                          : (task.progress ?? 0) > 0
+                          ? "bg-blue-500"
+                          : "bg-slate-300"
+                      }`}
+                      style={{
+                        width: `${Math.min(
+                          Math.max(
+                            task.progress ?? (task.status === "done" ? 100 : 0),
+                            0,
+                          ),
+                          100,
+                        )}%`,
+                      }}
+                    />
+                  </View>
+                  {task.status === "in_progress" && onUpdateProgress ? (
+                    <View className="mt-2.5 flex-row items-center justify-between border-t border-slate-100 pt-2">
+                      <Text className="text-[10px] font-semibold text-slate-400">
+                        Cập nhật nhanh:
+                      </Text>
+                      <View className="flex-row" style={{ gap: 5 }}>
+                        {[25, 50, 75, 100].map((p) => {
+                          const currentProg = task.progress ?? 0;
+                          return (
+                            <Pressable
+                              key={p}
+                              disabled={currentProg === p}
+                              onPress={() => onUpdateProgress(task._id, p)}
+                              className={`rounded-md px-2 py-1 border ${
+                                currentProg === p
+                                  ? `${isAdminArea ? "border-red-600 bg-red-600" : "border-blue-600 bg-blue-600"}`
+                                  : "border-slate-200 bg-slate-50"
+                              }`}
+                            >
+                              <Text
+                                className={`text-[10px] font-bold ${
+                                  currentProg === p
+                                    ? "text-white"
+                                    : "text-slate-600"
+                                }`}
+                              >
+                                {p}%
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
 
                 {/* Current Status Badge */}
                 <View className="flex-row items-center mt-3">

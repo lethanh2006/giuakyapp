@@ -133,6 +133,40 @@ export class TodoService {
     );
   }
 
+  async updateTaskDeadline(id: string, deadline: string, user: any) {
+    return this.forward(
+      'PATCH',
+      `/api/todo/${encodeURIComponent(id)}/deadline`,
+      { deadline },
+      null,
+      user,
+    );
+  }
+
+  async updateTaskProgress(id: string, progress: number, user: any) {
+    return this.forward(
+      'PATCH',
+      `/api/todo/${encodeURIComponent(id)}/progress`,
+      { progress },
+      null,
+      user,
+    );
+  }
+
+  async getOverdue(user: any) {
+    return this.forward('GET', '/api/todo/overdue', null, null, user);
+  }
+
+  async getUpcomingDeadline(query: any, user: any) {
+    return this.forward(
+      'GET',
+      '/api/todo/upcoming-deadline',
+      null,
+      query,
+      user,
+    );
+  }
+
   async deleteTask(id: string, user: any) {
     return this.forward(
       'DELETE',

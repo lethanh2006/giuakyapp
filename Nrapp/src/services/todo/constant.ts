@@ -14,6 +14,9 @@ export interface TaskItem {
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
+  progress?: number;
+  isOverdue?: boolean;
+  overdue?: boolean;
   createdBy?: string | RelatedUser;
   assignedTo?: string | RelatedUser;
   deadline?: string;
@@ -36,10 +39,18 @@ export interface UpdateTaskInput {
   deadline?: string | null;
 }
 
+export type TaskSortField = "createdAt" | "deadline" | "priority" | "title" | "updatedAt";
+
+export type SpecialDeadlineFilter = "all" | "upcoming" | "overdue";
+
 export interface MyTaskQuery {
   status?: TaskStatus;
   priority?: TaskPriority;
   search?: string;
+  sortBy?: TaskSortField;
+  order?: "asc" | "desc";
+  deadlineFrom?: string;
+  deadlineTo?: string;
   page?: number;
   limit?: number;
 }
@@ -48,6 +59,21 @@ export interface AdminTaskQuery extends MyTaskQuery {
   assignedTo?: string;
   createdBy?: string;
 }
+
+export interface TaskSortOption {
+  id: string;
+  field: TaskSortField;
+  order: "asc" | "desc";
+  label: string;
+  icon: string;
+}
+
+export const SORT_OPTIONS: TaskSortOption[] = [
+  { id: "newest", field: "createdAt", order: "desc", label: "Mới nhất", icon: "time-outline" },
+  { id: "deadline_asc", field: "deadline", order: "asc", label: "Hạn gần nhất", icon: "calendar-outline" },
+  { id: "priority_desc", field: "priority", order: "desc", label: "Ưu tiên cao", icon: "flame-outline" },
+  { id: "title_asc", field: "title", order: "asc", label: "Tên A-Z", icon: "text-outline" },
+];
 
 export interface TaskPagination {
   page: number;

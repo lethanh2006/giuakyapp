@@ -24,9 +24,35 @@ export class MyTaskQueryDto {
   @ApiPropertyOptional({ enum: TaskPriority })
   @IsOptional()
   @IsEnum(TaskPriority, {
-    message: 'priority phải là low, medium hoặc high',
+    message: 'priority phải là low, medium, high hoặc urgent',
   })
   priority?: TaskPriority;
+
+  @ApiPropertyOptional({
+    description: 'Trường sắp xếp',
+    enum: ['deadline', 'priority', 'createdAt', 'title', 'updatedAt'],
+  })
+  @IsOptional()
+  sortBy?: 'deadline' | 'priority' | 'createdAt' | 'title' | 'updatedAt';
+
+  @ApiPropertyOptional({
+    description: 'Thứ tự sắp xếp',
+    enum: ['asc', 'desc'],
+  })
+  @IsOptional()
+  order?: 'asc' | 'desc';
+
+  @ApiPropertyOptional({
+    description: 'Hạn chót từ ngày (ISO 8601)',
+  })
+  @IsOptional()
+  deadlineFrom?: string;
+
+  @ApiPropertyOptional({
+    description: 'Hạn chót đến ngày (ISO 8601)',
+  })
+  @IsOptional()
+  deadlineTo?: string;
 
   @ApiPropertyOptional({
     description: 'Tìm trong tiêu đề và mô tả',

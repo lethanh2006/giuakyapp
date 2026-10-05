@@ -95,6 +95,46 @@ export async function updateTodoPriority(
   );
 }
 
+export async function updateTodoProgress(
+  token: string,
+  taskId: string,
+  progress: number,
+) {
+  return axios.patch<{ task: TaskItem }>(
+    `${ipNR}/todo/${encodeURIComponent(taskId)}/progress`,
+    { progress },
+    getAuthHeader(token),
+  );
+}
+
+export async function updateTodoDeadline(
+  token: string,
+  taskId: string,
+  deadline: string,
+) {
+  return axios.patch<{ task: TaskItem }>(
+    `${ipNR}/todo/${encodeURIComponent(taskId)}/deadline`,
+    { deadline },
+    getAuthHeader(token),
+  );
+}
+
+export async function getOverdueTasks(token: string) {
+  const { data } = await axios.get<{ tasks: TaskItem[]; total: number }>(
+    `${ipNR}/todo/overdue`,
+    getAuthHeader(token),
+  );
+  return data;
+}
+
+export async function getUpcomingDeadlineTasks(token: string, days = 3) {
+  const { data } = await axios.get<{ tasks: TaskItem[]; total: number }>(
+    `${ipNR}/todo/upcoming-deadline`,
+    { ...getAuthHeader(token), params: { days } },
+  );
+  return data;
+}
+
 export async function deleteTodoTask(token: string, taskId: string) {
   return axios.delete(
     `${ipNR}/todo/${encodeURIComponent(taskId)}`,

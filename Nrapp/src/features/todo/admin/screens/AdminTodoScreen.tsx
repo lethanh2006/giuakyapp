@@ -3,13 +3,16 @@ import AdminTodoCreateTaskCard from "@/src/features/todo/admin/ui/AdminTodoCreat
 import AdminTodoIntroCard from "@/src/features/todo/admin/ui/AdminTodoIntroCard";
 import AdminTodoTaskFilters from "@/src/features/todo/admin/ui/AdminTodoTaskFilters";
 import AdminTodoTaskListCard from "@/src/features/todo/admin/ui/AdminTodoTaskListCard";
-import type {
-  CreateTaskInput,
-  TaskItem,
-  TaskPagination,
-  TaskPriority,
-  TaskStatus,
-  UpdateTaskInput,
+import {
+  SORT_OPTIONS,
+  type CreateTaskInput,
+  type SpecialDeadlineFilter,
+  type TaskItem,
+  type TaskPagination,
+  type TaskPriority,
+  type TaskSortOption,
+  type TaskStatus,
+  type UpdateTaskInput,
 } from "@/src/services/todo/constant";
 import { useAuthSession } from "@/src/features/auth/model/AuthSessionContext";
 import { normalizeUser } from "@/src/shared/model/normalize-user";
@@ -19,9 +22,12 @@ import {
   deleteTodoTask,
   getAdminTasks,
   getMyTasks,
+  getOverdueTasks,
+  getUpcomingDeadlineTasks,
   updateTodoTask,
   updateTodoStatus,
   updateTodoPriority,
+  updateTodoProgress,
 } from "@/src/services/todo/todo.service";
 import { getApiErrorMessage } from "@/src/utils/apiHelper";
 import { getAllUsers } from "@/src/services/user/user.service";
@@ -71,6 +77,8 @@ export default function AdminTodoScreen() {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
   const [priorityFilter, setPriorityFilter] =
     useState<TaskPriority | null>(null);
+  const [sortOption, setSortOption] = useState<TaskSortOption>(SORT_OPTIONS[0]);
+  const [specialFilter, setSpecialFilter] = useState<SpecialDeadlineFilter>("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -99,20 +107,44 @@ export default function AdminTodoScreen() {
       const token = await getToken();
       if (!token) return;
 
-      const query = {
-        page,
-        limit: TASK_PAGE_LIMIT,
-        ...(statusFilter ? { status: statusFilter } : {}),
-        ...(priorityFilter ? { priority: priorityFilter } : {}),
-        ...(search ? { search } : {}),
-      };
-      const result = isAdminArea
-        ? await getAdminTasks(token, query)
-        : await getMyTasks(token, query);
+      if (specialFilter === "overdue") {
+        const result = await getOverdueTasks(token);
+        if (requestNumber !== taskRequestRef.current) return;
+        setTasks(result.tasks);
+        setPagination({
+          page: 1,
+          limit: result.total,
+          total: result.total,
+          totalPages: 1,
+        });
+      } else if (specialFilter === "upcoming") {
+        const result = await getUpcomingDeadlineTasks(token, 3);
+        if (requestNumber !== taskRequestRef.current) return;
+        setTasks(result.tasks);
+        setPagination({
+          page: 1,
+          limit: result.total,
+          total: result.total,
+          totalPages: 1,
+        });
+      } else {
+        const query = {
+          page,
+          limit: TASK_PAGE_LIMIT,
+          sortBy: sortOption.field,
+          order: sortOption.order,
+          ...(statusFilter ? { status: statusFilter } : {}),
+          ...(priorityFilter ? { priority: priorityFilter } : {}),
+          ...(search ? { search } : {}),
+        };
+        const result = isAdminArea
+          ? await getAdminTasks(token, query)
+          : await getMyTasks(token, query);
 
-      if (requestNumber !== taskRequestRef.current) return;
-      setTasks(result.tasks);
-      setPagination(result.pagination);
+        if (requestNumber !== taskRequestRef.current) return;
+        setTasks(result.tasks);
+        setPagination(result.pagination);
+      }
     } catch (error: unknown) {
       if (requestNumber !== taskRequestRef.current) return;
       Alert.alert("Lỗi", getApiErrorMessage(error, "Không tải được công việc"));
@@ -126,6 +158,8 @@ export default function AdminTodoScreen() {
     page,
     priorityFilter,
     search,
+    sortOption,
+    specialFilter,
     statusFilter,
   ]);
 
@@ -277,6 +311,23 @@ export default function AdminTodoScreen() {
     }
   };
 
+  const updateProgress = async (taskId: string, progress: number) => {
+    try {
+      setUpdatingTaskId(taskId);
+      const token = await getToken();
+      if (!token) return;
+      await updateTodoProgress(token, taskId, progress);
+      await loadTasks();
+    } catch (error: unknown) {
+      Alert.alert(
+        "Lỗi",
+        getApiErrorMessage(error, "Không cập nhật được tiến độ"),
+      );
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  };
+
   const updateTask = async (
     taskId: string,
     input: UpdateTaskInput,
@@ -366,6 +417,8 @@ export default function AdminTodoScreen() {
         area={area}
         status={statusFilter}
         priority={priorityFilter}
+        sortOption={sortOption}
+        specialFilter={specialFilter}
         searchInput={searchInput}
         appliedSearch={search}
         page={page}
@@ -380,6 +433,14 @@ export default function AdminTodoScreen() {
           setPage(1);
           setPriorityFilter(value);
         }}
+        onSelectSort={(opt) => {
+          setPage(1);
+          setSortOption(opt);
+        }}
+        onChangeSpecialFilter={(tab) => {
+          setPage(1);
+          setSpecialFilter(tab);
+        }}
         onChangeSearchInput={setSearchInput}
         onApplySearch={() => {
           setPage(1);
@@ -389,6 +450,8 @@ export default function AdminTodoScreen() {
           setPage(1);
           setStatusFilter(null);
           setPriorityFilter(null);
+          setSortOption(SORT_OPTIONS[0]);
+          setSpecialFilter("all");
           setSearchInput("");
           setSearch("");
         }}
@@ -415,6 +478,7 @@ export default function AdminTodoScreen() {
         onAssignTask={assignTask}
         onUpdateStatus={updateStatus}
         onUpdatePriority={updatePriority}
+        onUpdateProgress={updateProgress}
         onUpdateTask={updateTask}
         onRemoveTask={removeTask}
       />

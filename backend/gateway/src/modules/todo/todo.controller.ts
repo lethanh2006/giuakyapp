@@ -24,8 +24,11 @@ import {
 import { CreateTaskDto } from './dto/create-task.dto';
 import { AssignTaskDto, UpdateTaskStatusDto } from './dto/assign-task.dto';
 import { MyTaskQueryDto, TaskQueryDto } from './dto/task-query.dto';
+import { UpcomingDeadlineQueryDto } from './dto/upcoming-deadline-query.dto';
+import { UpdateTaskDeadlineDto } from './dto/update-task-deadline.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskPriorityDto } from './dto/update-task-priority.dto';
+import { UpdateTaskProgressDto } from './dto/update-task-progress.dto';
 
 @ApiTags('Api Todo')
 @Controller('api/todo')
@@ -103,6 +106,56 @@ export class TodoController {
     @Req() req: any,
   ) {
     return this.todoService.updateTaskPriority(id, body.priority, req.user);
+  }
+
+  @Patch(':id/deadline')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CHEF)
+  @ApiOperation({
+    summary: 'Cập nhật hạn chót công việc (ADMIN, MANAGER, CHEF)',
+  })
+  @ApiParam({ name: 'id', example: '507f1f77bcf86cd799439011' })
+  async updateDeadline(
+    @Param('id') id: string,
+    @Body() body: UpdateTaskDeadlineDto,
+    @Req() req: any,
+  ) {
+    return this.todoService.updateTaskDeadline(id, body.deadline, req.user);
+  }
+
+  @Patch(':id/progress')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Cập nhật tiến độ hoàn thành % của công việc',
+  })
+  @ApiParam({ name: 'id', example: '507f1f77bcf86cd799439011' })
+  async updateProgress(
+    @Param('id') id: string,
+    @Body() body: UpdateTaskProgressDto,
+    @Req() req: any,
+  ) {
+    return this.todoService.updateTaskProgress(id, body.progress, req.user);
+  }
+
+  @Get('overdue')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Lấy danh sách các công việc đã quá hạn chót',
+  })
+  async getOverdue(@Req() req: any) {
+    return this.todoService.getOverdue(req.user);
+  }
+
+  @Get('upcoming-deadline')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Lấy danh sách các công việc sắp đến hạn chót trong N ngày',
+  })
+  async getUpcomingDeadline(
+    @Query() query: UpcomingDeadlineQueryDto,
+    @Req() req: any,
+  ) {
+    return this.todoService.getUpcomingDeadline(query, req.user);
   }
 
   @Get()

@@ -4,15 +4,20 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import {
   PRIORITY_MAP,
   PRIORITY_OPTIONS,
+  SORT_OPTIONS,
   STATUS_MAP,
   STATUS_OPTIONS,
+  type SpecialDeadlineFilter,
   type TaskPriority,
+  type TaskSortOption,
   type TaskStatus,
 } from "@/src/services/todo/constant";
 
 type Props = {
   status: TaskStatus | null;
   priority: TaskPriority | null;
+  sortOption: TaskSortOption;
+  specialFilter: SpecialDeadlineFilter;
   searchInput: string;
   appliedSearch: string;
   page: number;
@@ -21,6 +26,8 @@ type Props = {
   loading: boolean;
   onChangeStatus: (status: TaskStatus | null) => void;
   onChangePriority: (priority: TaskPriority | null) => void;
+  onSelectSort: (option: TaskSortOption) => void;
+  onChangeSpecialFilter: (filter: SpecialDeadlineFilter) => void;
   onChangeSearchInput: (value: string) => void;
   onApplySearch: () => void;
   onReset: () => void;
@@ -30,6 +37,8 @@ type Props = {
 export default function UserTodoTaskFilters({
   status,
   priority,
+  sortOption,
+  specialFilter,
   searchInput,
   appliedSearch,
   page,
@@ -38,6 +47,8 @@ export default function UserTodoTaskFilters({
   loading,
   onChangeStatus,
   onChangePriority,
+  onSelectSort,
+  onChangeSpecialFilter,
   onChangeSearchInput,
   onApplySearch,
   onReset,
@@ -46,18 +57,66 @@ export default function UserTodoTaskFilters({
   const hasFilter =
     status !== null ||
     priority !== null ||
+    specialFilter !== "all" ||
+    sortOption.id !== "newest" ||
     !!searchInput.trim() ||
     !!appliedSearch;
   const safeTotalPages = Math.max(totalPages, 1);
 
   return (
     <View className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      {/* Quick Deadline Focus Tabs */}
+      <View className="mb-3.5 flex-row rounded-xl bg-slate-100 p-1" style={{ gap: 4 }}>
+        <Pressable
+          onPress={() => onChangeSpecialFilter("all")}
+          className={`flex-1 items-center rounded-lg py-2 ${
+            specialFilter === "all" ? "bg-white shadow-sm" : "bg-transparent"
+          }`}
+        >
+          <Text
+            className={`text-xs font-bold ${
+              specialFilter === "all" ? "text-slate-800" : "text-slate-500"
+            }`}
+          >
+            Tất cả
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onChangeSpecialFilter("upcoming")}
+          className={`flex-1 items-center rounded-lg py-2 ${
+            specialFilter === "upcoming" ? "bg-amber-500 shadow-sm" : "bg-transparent"
+          }`}
+        >
+          <Text
+            className={`text-xs font-bold ${
+              specialFilter === "upcoming" ? "text-white font-black" : "text-slate-500"
+            }`}
+          >
+            Sắp đến hạn
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onChangeSpecialFilter("overdue")}
+          className={`flex-1 items-center rounded-lg py-2 ${
+            specialFilter === "overdue" ? "bg-rose-600 shadow-sm" : "bg-transparent"
+          }`}
+        >
+          <Text
+            className={`text-xs font-bold ${
+              specialFilter === "overdue" ? "text-white font-black" : "text-slate-500"
+            }`}
+          >
+            Quá hạn
+          </Text>
+        </Pressable>
+      </View>
+
       <View className="mb-3 flex-row items-center justify-between">
         <View className="flex-row items-center">
           <View className="mr-2 rounded-lg bg-indigo-500/10 p-1.5">
             <Ionicons name="filter-outline" size={18} color="#6366f1" />
           </View>
-          <Text className="text-sm font-bold text-slate-800">Bộ lọc công việc</Text>
+          <Text className="text-sm font-bold text-slate-800">Bộ lọc & Sắp xếp</Text>
         </View>
         {hasFilter ? (
           <Pressable onPress={onReset} className="rounded-lg px-2 py-1">
@@ -111,7 +170,7 @@ export default function UserTodoTaskFilters({
       <Text className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
         Mức ưu tiên
       </Text>
-      <View className="flex-row flex-wrap" style={{ gap: 7 }}>
+      <View className="mb-3 flex-row flex-wrap" style={{ gap: 7 }}>
         <FilterChip
           active={priority === null}
           label="Tất cả"
@@ -126,6 +185,22 @@ export default function UserTodoTaskFilters({
           />
         ))}
       </View>
+
+      <Text className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        Sắp xếp theo
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-1">
+        <View className="flex-row py-0.5" style={{ gap: 7 }}>
+          {SORT_OPTIONS.map((opt) => (
+            <FilterChip
+              key={opt.id}
+              active={sortOption.id === opt.id}
+              label={opt.label}
+              onPress={() => onSelectSort(opt)}
+            />
+          ))}
+        </View>
+      </ScrollView>
 
       <View className="mt-4 flex-row items-center justify-between border-t border-slate-100 pt-3">
         <Text className="text-xs font-semibold text-slate-500">

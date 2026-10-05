@@ -14,6 +14,7 @@ type Props = {
   loading: boolean;
   updatingTaskId: string | null;
   onUpdateStatus: (taskId: string, status: TaskStatus) => void;
+  onUpdateProgress?: (taskId: string, progress: number) => void;
 };
 
 const personName = (person?: string | RelatedUser) => {
@@ -35,6 +36,7 @@ export default function UserTodoTaskListCard({
   loading,
   updatingTaskId,
   onUpdateStatus,
+  onUpdateProgress,
 }: Props) {
   return (
     <View className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
@@ -68,6 +70,16 @@ export default function UserTodoTaskListCard({
             const priority = PRIORITY_MAP[task.priority];
             const transitions = ASSIGNEE_STATUS_TRANSITIONS[task.status];
             const busy = updatingTaskId === task._id;
+            const isOverdue =
+              task.isOverdue ??
+              Boolean(
+                task.deadline &&
+                  new Date(task.deadline).getTime() < Date.now() &&
+                  task.status !== "done" &&
+                  task.status !== "cancelled",
+              );
+            const progress = task.progress ?? (task.status === "done" ? 100 : 0);
+
             return (
               <View className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4" key={task._id}>
                 <View className="flex-row items-start">
@@ -94,21 +106,83 @@ export default function UserTodoTaskListCard({
                   </View>
                 </View>
 
-                <View className="mt-3 flex-row flex-wrap" style={{ gap: 7 }}>
+                <View className="mt-3 flex-row flex-wrap items-center" style={{ gap: 7 }}>
                   <View className={`rounded-full px-2.5 py-1 ${status.bgClass}`}>
                     <Text className={`text-[10px] font-black ${status.textClass}`}>{status.label}</Text>
                   </View>
                   <View className={`rounded-full px-2.5 py-1 ${priority.bgClass}`}>
                     <Text className={`text-[10px] font-black ${priority.textClass}`}>{priority.label}</Text>
                   </View>
+                  {isOverdue ? (
+                    <View className="flex-row items-center rounded-full bg-rose-100 px-2.5 py-1 border border-rose-300">
+                      <Ionicons name="alert-circle" size={12} color="#e11d48" style={{ marginRight: 3 }} />
+                      <Text className="text-[10px] font-black text-rose-700">Quá hạn</Text>
+                    </View>
+                  ) : null}
                 </View>
 
-                <View className="mt-3 rounded-xl bg-white p-3">
+                {/* Progress Bar & Quick Updater */}
+                <View className="mt-3 rounded-xl bg-white p-3 border border-slate-100">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <Ionicons name="trending-up-outline" size={13} color="#64748b" style={{ marginRight: 4 }} />
+                      <Text className="text-[11px] font-bold text-slate-600">Tiến độ hoàn thành</Text>
+                    </View>
+                    <Text className="text-xs font-black text-slate-800">{progress}%</Text>
+                  </View>
+                  <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <View
+                      className={`h-full rounded-full ${
+                        progress >= 100
+                          ? "bg-emerald-500"
+                          : progress >= 50
+                          ? "bg-amber-500"
+                          : progress > 0
+                          ? "bg-blue-500"
+                          : "bg-slate-300"
+                      }`}
+                      style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
+                    />
+                  </View>
+                  {task.status === "in_progress" && onUpdateProgress ? (
+                    <View className="mt-2.5 flex-row items-center justify-between border-t border-slate-100 pt-2">
+                      <Text className="text-[10px] font-semibold text-slate-400">Cập nhật nhanh:</Text>
+                      <View className="flex-row" style={{ gap: 5 }}>
+                        {[25, 50, 75, 100].map((p) => (
+                          <Pressable
+                            key={p}
+                            disabled={busy}
+                            onPress={() => onUpdateProgress(task._id, p)}
+                            className={`rounded-md px-2 py-1 border ${
+                              progress === p
+                                ? "border-blue-600 bg-blue-600"
+                                : "border-slate-200 bg-slate-50"
+                            }`}
+                          >
+                            <Text
+                              className={`text-[10px] font-bold ${
+                                progress === p ? "text-white" : "text-slate-600"
+                              }`}
+                            >
+                              {p}%
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+
+                <View className="mt-3 rounded-xl bg-white p-3 border border-slate-100">
                   <Text className="text-[11px] text-slate-500">
                     Người giao: <Text className="font-bold text-slate-700">{personName(task.createdBy)}</Text>
                   </Text>
                   <Text className="mt-1 text-[11px] text-slate-500">
-                    Hạn hoàn thành: <Text className="font-bold text-slate-700">{formatDate(task.deadline)}</Text>
+                    Hạn hoàn thành:{" "}
+                    <Text className={`font-bold ${isOverdue ? "text-rose-600 font-black" : "text-slate-700"}`}>
+                      {formatDate(task.deadline)}
+                      {isOverdue ? " (Đã quá hạn)" : ""}
+                    </Text>
                   </Text>
                 </View>
 
