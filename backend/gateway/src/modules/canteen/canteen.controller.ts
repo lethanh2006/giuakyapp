@@ -35,6 +35,9 @@ import { UpdateTableDto } from './dto/update-table.dto';
 import { TableQueryDto } from './dto/table-query.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { CancelOrderDto } from './dto/cancel-order.dto';
+import { UpsertReviewDto } from './dto/upsert-review.dto';
+import { ReplyReviewDto } from './dto/reply-review.dto';
+import { ReviewQueryDto, ReviewSummaryQueryDto } from './dto/review-query.dto';
 
 @ApiTags('Api Canteen')
 @Controller('api/canteen')
@@ -187,6 +190,65 @@ export class CanteenController {
   })
   async confirmCashPayment(@Param('id') id: string, @Req() req: any) {
     return this.canteenService.confirmCashPayment(id, req.user);
+  }
+
+  // --- Nhóm API Đánh Giá Đơn Hàng (Review APIs) ---
+
+  @Put('orders/:id/review')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Chủ đơn tạo hoặc sửa đánh giá cho đơn đã thanh toán (trong 7 ngày, chưa được phản hồi)',
+  })
+  async upsertReview(
+    @Param('id') id: string,
+    @Body() body: UpsertReviewDto,
+    @Req() req: any,
+  ) {
+    return this.canteenService.upsertReview(id, body, req.user);
+  }
+
+  @Get('reviews/my')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Xem các đánh giá của chính người dùng' })
+  async getMyReviews(@Req() req: any) {
+    return this.canteenService.getMyReviews(req.user);
+  }
+
+  @Get('reviews/summary')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'Thống kê đánh giá: điểm trung bình, phân bố sao, chưa phản hồi (ADMIN)',
+  })
+  async getReviewSummary(
+    @Query() query: ReviewSummaryQueryDto,
+    @Req() req: any,
+  ) {
+    return this.canteenService.getReviewSummary(query, req.user);
+  }
+
+  @Get('reviews')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Danh sách đánh giá có lọc và phân trang (ADMIN)',
+  })
+  async getReviews(@Query() query: ReviewQueryDto, @Req() req: any) {
+    return this.canteenService.getReviews(query, req.user);
+  }
+
+  @Patch('reviews/:id/reply')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Phản hồi hoặc sửa phản hồi cho đánh giá (ADMIN)' })
+  async replyToReview(
+    @Param('id') id: string,
+    @Body() body: ReplyReviewDto,
+    @Req() req: any,
+  ) {
+    return this.canteenService.replyToReview(id, body, req.user);
   }
 
   // --- 3.4 Nhóm API Quản Lý Bàn Ăn (Table APIs) ---
